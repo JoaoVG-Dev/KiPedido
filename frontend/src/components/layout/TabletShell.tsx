@@ -1,6 +1,6 @@
 import { BellRing, ClipboardList, Home, ReceiptText, ShoppingCart, Utensils } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink, Outlet, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useApiQuery } from '../../hooks/useApiQuery'
 import { apiGet, apiPost } from '../../services/api'
 import type { ApiServiceCall, TabletSessionResponse, TableStatus } from '../../types'
@@ -42,17 +42,31 @@ export function TabletShell() {
           </div>
         </div>
 
-        <div className="tablet-header__status">
-          {data?.table.status ? (
-            <StatusBadge
-              label={tableStatusLabel[data.table.status]}
-              tone={data.table.status === 'waiting_payment' ? 'warning' : data.table.status === 'occupied' ? 'info' : 'success'}
-            />
-          ) : null}
-          {headerMessage ? <span>{headerMessage}</span> : null}
-          <button className="icon-button" type="button" title="Chamar garçom" onClick={() => void callWaiter()}>
-            <BellRing size={24} />
-          </button>
+        <div className="tablet-header__side">
+          <div className="tablet-header__status">
+            {data?.table.status ? (
+              <StatusBadge
+                label={tableStatusLabel[data.table.status]}
+                tone={data.table.status === 'waiting_payment' ? 'warning' : data.table.status === 'occupied' ? 'info' : 'success'}
+              />
+            ) : null}
+            {headerMessage ? <span>{headerMessage}</span> : null}
+          </div>
+
+          <div className="tablet-header__actions" aria-label="Ações rápidas da mesa">
+            <button className="tablet-quick-action" type="button" title="Chamar garçom" onClick={() => void callWaiter()}>
+              <BellRing size={19} />
+              <span>Garçom</span>
+            </button>
+            <Link className="tablet-quick-action" to={`${base}/conta`}>
+              <ReceiptText size={19} />
+              <span>Conta</span>
+            </Link>
+            <Link className="tablet-quick-action" to={`${base}/pedidos`}>
+              <ClipboardList size={19} />
+              <span>Pedidos</span>
+            </Link>
+          </div>
         </div>
       </header>
 
