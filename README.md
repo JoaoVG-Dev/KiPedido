@@ -1,6 +1,6 @@
 # KiPedido
 
-KiPedido e um software operacional para restaurantes que usam tablets nas mesas para registrar pedidos. A base atual ja conecta o frontend React a uma API Laravel real, com autenticacao administrativa por Sanctum e fluxos iniciais para tablet, cozinha, caixa e administracao.
+KiPedido e um software operacional para restaurantes que usam tablets nas mesas para registrar pedidos. A base atual conecta o frontend React a uma API Laravel real, com autenticacao administrativa por Sanctum e fluxos iniciais para tablet, cozinha, caixa e administracao.
 
 ## URLs Locais
 
@@ -50,17 +50,6 @@ SANCTUM_STATEFUL_DOMAINS=127.0.0.1:5173,localhost:5173
 SESSION_DOMAIN=127.0.0.1
 ```
 
-Para MySQL:
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=kipedido
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
 ## Como Instalar O Frontend
 
 ```bash
@@ -102,6 +91,21 @@ API menu: http://127.0.0.1:8000/api/tablet/mesa-01-teste/menu
 - Tablet/Mesa: menu por token, carrinho local, envio real de pedido, pedidos da sessao, chamar garcom e pedir conta.
 - Cozinha: pedidos reais, itens, observacoes e alteracao de status.
 - Caixa: mesas reais, calculo da conta, fechamento por pagamento e liberacao da mesa.
+
+## Experiencia Responsiva
+
+A interface atual foi organizada para uso operacional em desktop, tablet e celular.
+
+- Tablet: header com mesa/status, categorias navegaveis, cards grandes de produto, carrinho com observacoes por item e resumo fixo quando houver itens.
+- Cozinha: quadro por status com cards grandes, observacoes em destaque e botoes de transicao de preparo.
+- Caixa: grade responsiva de mesas, total destacado, detalhe da conta e lista de pedidos/itens em cards.
+- Admin: sidebar em desktop, navegacao adaptada em telas pequenas e tabelas que viram cards no mobile.
+
+Tamanhos recomendados para conferencia manual:
+
+```txt
+360px, 390px, 430px, 768px, 1024px e 1280px+
+```
 
 ## Rotas Principais Da API
 
