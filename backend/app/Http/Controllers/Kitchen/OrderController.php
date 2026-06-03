@@ -16,7 +16,7 @@ class OrderController extends Controller
 
         return Order::query()
             ->with(['items', 'table'])
-            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($status && $status !== 'all', fn ($query) => $query->where('status', $status))
             ->when(! $status, fn ($query) => $query->whereIn('status', ['received', 'preparing', 'ready']))
             ->oldest('sent_at')
             ->paginate(50);

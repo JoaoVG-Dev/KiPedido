@@ -41,8 +41,15 @@ class CalculateTableBillAction
             'total_amount' => $total,
         ]);
 
+        $session->refresh()->load([
+            'orders' => fn ($query) => $query
+                ->where('status', '!=', 'cancelled')
+                ->with('items')
+                ->latest('sent_at'),
+        ]);
+
         return [
-            'session' => $session->refresh(),
+            'session' => $session,
             'subtotal' => $subtotal,
             'discount_amount' => $discount,
             'service_fee_percentage' => $serviceFeePercentage,
