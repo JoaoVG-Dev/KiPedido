@@ -590,6 +590,26 @@ code {
   margin-top: 3px;
 }
 
+.table-row {
+  border-left: 4px solid transparent;
+}
+
+.table-row--available {
+  border-left-color: var(--success);
+}
+
+.table-row--occupied {
+  border-left-color: var(--info);
+}
+
+.table-row--waiting_payment {
+  border-left-color: var(--primary);
+}
+
+.table-row--inactive {
+  border-left-color: var(--danger);
+}
+
 .task-list span {
   display: flex;
   align-items: center;
@@ -826,6 +846,25 @@ code {
   background: var(--surface-warm);
   color: var(--muted);
   font-weight: 750;
+}
+
+.admin-summary-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 243, 0.82), rgba(255, 255, 255, 0.96)),
+    var(--surface);
+}
+
+.admin-page .product-card {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.admin-page .product-card:hover {
+  box-shadow: var(--shadow-card);
+  transform: translateY(-2px);
+}
+
+.admin-page .data-table__row {
+  box-shadow: 0 8px 18px rgba(31, 41, 51, 0.04);
 }
 
 .settings-grid {
