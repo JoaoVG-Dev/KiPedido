@@ -1,14 +1,26 @@
 # KiPedido
 
-KiPedido é uma base de software operacional para restaurantes que usam tablets nas mesas para registrar pedidos sem depender do garçom. O fluxo inicial cobre tablet da mesa, cozinha, caixa e administração.
+KiPedido e um software operacional para restaurantes que usam tablets nas mesas para registrar pedidos. A base atual ja conecta o frontend React a uma API Laravel real, com autenticacao administrativa por Sanctum e fluxos iniciais para tablet, cozinha, caixa e administracao.
+
+## URLs Locais
+
+```txt
+Frontend:
+http://127.0.0.1:5173
+
+Backend:
+http://127.0.0.1:8000
+
+Health check:
+http://127.0.0.1:8000/api/health
+```
 
 ## Stack
 
-- Backend: Laravel API
-- Autenticação administrativa: Laravel Sanctum
+- Backend: Laravel API + Sanctum
 - Frontend: React + TypeScript + Vite
-- Banco: MySQL ou PostgreSQL em produção; SQLite pode ser usado para desenvolvimento rápido
-- Arquitetura: frontend e backend separados
+- Banco: MySQL ou PostgreSQL em ambiente real; SQLite pode ser usado para desenvolvimento local rapido
+- Arquitetura: frontend e backend separados em `backend/` e `frontend/`
 
 ## Estrutura
 
@@ -18,18 +30,27 @@ KiPedido/
 └── frontend/
 ```
 
-## Backend
+## Como Instalar O Backend
 
 ```bash
 cd backend
 composer install
 cp .env.example .env
 php artisan key:generate
-php artisan migrate --seed
-php artisan serve
+php artisan migrate:fresh --seed
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Para usar MySQL ou PostgreSQL, ajuste no `.env`:
+Configuracao local esperada no `backend/.env`:
+
+```env
+APP_URL=http://127.0.0.1:8000
+FRONTEND_URL=http://127.0.0.1:5173
+SANCTUM_STATEFUL_DOMAINS=127.0.0.1:5173,localhost:5173
+SESSION_DOMAIN=127.0.0.1
+```
+
+Para MySQL:
 
 ```env
 DB_CONNECTION=mysql
@@ -40,18 +61,22 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-## Frontend
+## Como Instalar O Frontend
 
 ```bash
 cd frontend
 npm install
 cp .env.example .env
-npm run dev
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-O frontend usa `VITE_API_URL=http://localhost:8000/api` por padrão.
+Configuracao local esperada no `frontend/.env`:
 
-## Usuário Admin De Teste
+```env
+VITE_API_URL=http://127.0.0.1:8000/api
+```
+
+## Usuario Admin De Teste
 
 ```txt
 Email: admin@kipedido.local
@@ -59,60 +84,80 @@ Senha: KiPedido@123
 Role: admin
 ```
 
-Essas credenciais são apenas para desenvolvimento local e são criadas pelo seeder.
+As credenciais acima sao criadas apenas pelo seeder local.
 
-## Módulos
+## Mesa De Teste Para Tablet
 
-- Tablet/Mesa: cardápio, carrinho, envio de pedido, status, chamar garçom e pedir conta.
-- Cozinha: fila de pedidos, itens, observações e atualização de status.
-- Caixa: mesas abertas, conta da mesa, desconto, pagamento e liberação.
-- Admin: login, mesas, categorias, produtos, usuários, configurações, relatórios e logs.
+O seeder cria 10 mesas com tokens previsiveis para desenvolvimento. Use:
 
-## Rotas Iniciais Da API
+```txt
+Token: mesa-01-teste
+URL: http://127.0.0.1:5173/tablet/mesa-01-teste
+API menu: http://127.0.0.1:8000/api/tablet/mesa-01-teste/menu
+```
+
+## Modulos
+
+- Admin: login, dashboard, mesas, categorias, produtos, usuarios, configuracoes, relatorios e logs.
+- Tablet/Mesa: menu por token, carrinho local, envio real de pedido, pedidos da sessao, chamar garcom e pedir conta.
+- Cozinha: pedidos reais, itens, observacoes e alteracao de status.
+- Caixa: mesas reais, calculo da conta, fechamento por pagamento e liberacao da mesa.
+
+## Rotas Principais Da API
+
+### Publicas
+
+- `GET /api/health`
+- `GET /api/tablet/{token}/menu`
+- `GET /api/tablet/{token}/session`
+- `POST /api/tablet/{token}/orders`
+- `GET /api/tablet/{token}/orders`
+- `POST /api/tablet/{token}/call-waiter`
+- `POST /api/tablet/{token}/request-bill`
+
+### Autenticadas
 
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `GET /api/admin/dashboard`
 - `GET /api/admin/tables`
-- `GET /api/tablet/{token}/menu`
-- `POST /api/tablet/{token}/orders`
+- `GET /api/admin/categories`
+- `GET /api/admin/products`
+- `GET /api/admin/users`
+- `GET /api/admin/logs`
 - `GET /api/kitchen/orders`
 - `PATCH /api/kitchen/orders/{id}/status`
 - `GET /api/cashier/tables`
+- `GET /api/cashier/tables/{id}/bill`
 - `POST /api/cashier/tables/{id}/close`
+- `POST /api/cashier/tables/{id}/release`
 
-## Validação
+## Fluxo Manual Recomendado
+
+1. Acesse `http://127.0.0.1:5173/admin/login`.
+2. Entre com `admin@kipedido.local` e `KiPedido@123`.
+3. Confira Admin, Mesas, Categorias e Produtos carregando dados reais.
+4. Acesse `http://127.0.0.1:5173/tablet/mesa-01-teste/cardapio`.
+5. Adicione um produto ao carrinho e envie o pedido.
+6. Acesse `/kitchen/orders`, altere o status do pedido.
+7. Acesse `/cashier/tables/1`, feche a conta e libere a mesa.
+
+## Validacao
 
 ```bash
 cd backend
-php artisan migrate:fresh --seed
 php artisan test
 
 cd ../frontend
 npm run build
 ```
 
-## GitHub
-
-Se o GitHub CLI estiver autenticado:
-
-```bash
-gh repo create JoaoVG-Dev/KiPedido --public --source=. --remote=origin --push
-```
-
-Se precisar criar manualmente:
-
-```bash
-git remote add origin https://github.com/JoaoVG-Dev/KiPedido.git
-git branch -M main
-git push -u origin main
-```
-
 ## Roadmap
 
-- PWA instalável para tablets e PCs.
+- PWA instalavel para tablets e PCs.
 - Tempo real com Laravel Reverb.
-- Impressão térmica para cozinha e caixa.
-- Permissões mais granulares por perfil.
-- Relatórios operacionais e financeiros.
+- Impressao termica para cozinha e caixa.
+- Permissoes mais granulares por perfil.
+- Relatorios operacionais e financeiros.
 - Aplicativo desktop com Electron ou Tauri.
