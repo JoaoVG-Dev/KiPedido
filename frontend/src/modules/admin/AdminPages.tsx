@@ -350,10 +350,10 @@ function TableDataTable({ tables }: { tables: ApiRestaurantTable[] }) {
       </div>
       {tables.map((table) => (
         <div className="data-table__row" key={table.id}>
-          <strong>{table.name}</strong>
-          <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
-          <span>{formatCurrency(table.active_session?.total_amount)}</span>
-          <code>{table.token}</code>
+          <strong data-label="Mesa">{table.name}</strong>
+          <span data-label="Status"><StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} /></span>
+          <span data-label="Consumo">{formatCurrency(table.active_session?.total_amount)}</span>
+          <code data-label="Token">{table.token}</code>
         </div>
       ))}
     </div>
@@ -398,9 +398,9 @@ function AdminListPage({ title, eyebrow, action, rows, isLoading, error, emptyTi
             </div>
             {rows.map((row) => (
               <div className="data-table__row" key={row.join('-')}>
-                <strong>{row[0]}</strong>
-                <span>{row[1]}</span>
-                <span>{row[2]}</span>
+                <strong data-label="Nome">{row[0]}</strong>
+                <span data-label="Detalhe">{row[1]}</span>
+                <span data-label="Status">{row[2]}</span>
               </div>
             ))}
           </div>
