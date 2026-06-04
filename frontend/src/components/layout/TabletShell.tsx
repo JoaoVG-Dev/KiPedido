@@ -8,7 +8,7 @@ import { StatusBadge } from '../ui/StatusBadge'
 
 const tableStatusLabel: Record<TableStatus, string> = {
   available: 'Livre',
-  occupied: 'Ocupada',
+  occupied: 'Mesa aberta',
   waiting_payment: 'Conta solicitada',
   closed: 'Fechada',
   inactive: 'Inativa',
@@ -38,7 +38,7 @@ export function TabletShell() {
           <span className="brand__mark">K</span>
           <div>
             <strong>KiPedido</strong>
-            <small>{data?.table.name ?? 'Mesa vinculada'}</small>
+            <small>{data?.table.name ? `${data.table.name} vinculada` : 'Mesa vinculada'}</small>
           </div>
         </div>
 
