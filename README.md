@@ -41,6 +41,23 @@ php artisan migrate:fresh --seed
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
+### Nota Para Este PC Windows
+
+Neste ambiente local, as extensoes `pdo_sqlite` e `sqlite3` existem na instalacao do PHP, mas estao desabilitadas no `php.ini`. Para usar SQLite sem alterar a configuracao global do computador, rode os comandos Artisan com as extensoes habilitadas na propria chamada:
+
+```powershell
+cd C:\Users\DevJo\Documents\GitHub\KiPedido\backend
+php -d extension=pdo_sqlite -d extension=sqlite3 artisan migrate:fresh --seed
+php -d extension=pdo_sqlite -d extension=sqlite3 artisan test
+```
+
+Para servir o backend com SQLite neste PC, use o servidor embutido do PHP a partir de `backend/public`:
+
+```powershell
+cd C:\Users\DevJo\Documents\GitHub\KiPedido\backend\public
+php -d extension=pdo_sqlite -d extension=sqlite3 -S 127.0.0.1:8000 ..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php
+```
+
 Configuracao local esperada no `backend/.env`:
 
 ```env
@@ -57,6 +74,14 @@ cd frontend
 npm install
 cp .env.example .env
 npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+No PowerShell deste PC, caso `npm` seja bloqueado por politica de execucao de scripts, use `npm.cmd`:
+
+```powershell
+cd C:\Users\DevJo\Documents\GitHub\KiPedido\frontend
+npm.cmd install
+npm.cmd run dev -- --host 127.0.0.1 --port 5173
 ```
 
 Configuracao local esperada no `frontend/.env`:
@@ -163,8 +188,24 @@ cd backend
 php artisan test
 
 cd ../frontend
+npm run lint
+npx tsc -b
 npm run build
 ```
+
+No PowerShell deste PC:
+
+```powershell
+cd C:\Users\DevJo\Documents\GitHub\KiPedido\backend
+php -d extension=pdo_sqlite -d extension=sqlite3 artisan test
+
+cd C:\Users\DevJo\Documents\GitHub\KiPedido\frontend
+npm.cmd run lint
+npx.cmd tsc -b
+npm.cmd run build
+```
+
+Observacao: `npm.cmd run build` e `npm.cmd run dev` podem falhar neste Windows com a mensagem de que uma politica de Controle de Aplicativo bloqueou o arquivo nativo do Rolldown usado pelo Vite (`@rolldown/binding-win32-x64-msvc`). Isso e uma limitacao local do ambiente antes do bundle da aplicacao. Quando isso ocorrer, valide o frontend com `npm.cmd run lint` e `npx.cmd tsc -b`, ou rode o build em um ambiente onde esse binario nativo seja permitido.
 
 ## Roadmap
 
