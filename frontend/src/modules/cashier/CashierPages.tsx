@@ -211,7 +211,10 @@ function OrderList({ orders }: { orders: ApiOrder[] }) {
           <div className="cashier-order-items">
             {(order.items ?? []).map((item) => (
               <div key={item.id}>
-                <span>{item.quantity}x {item.product_name}</span>
+                <span>
+                  <strong>{item.quantity}x {item.product_name}</strong>
+                  {item.notes ? <small>{item.notes}</small> : null}
+                </span>
                 <strong>{formatCurrency(item.total_price)}</strong>
               </div>
             ))}
