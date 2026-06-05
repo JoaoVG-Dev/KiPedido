@@ -1,4 +1,4 @@
-import { BellRing, Check, Clock3, Flame, ListChecks } from 'lucide-react'
+import { BellRing, Check, ChefHat, Clock3, Flame, ListChecks, PackageCheck, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { KitchenStatusColumn } from '../../components/kitchen/KitchenStatusColumn'
 import { MetricCard } from '../../components/shared/MetricCard'
@@ -13,12 +13,13 @@ const kitchenColumns: Array<{
   status: ApiOrder['status']
   title: string
   description: string
+  icon: typeof Clock3
 }> = [
-  { status: 'received', title: 'Recebidos', description: 'Entraram agora' },
-  { status: 'preparing', title: 'Em preparo', description: 'Na produção' },
-  { status: 'ready', title: 'Prontos', description: 'Aguardando entrega' },
-  { status: 'delivered', title: 'Entregues', description: 'Finalizados' },
-  { status: 'cancelled', title: 'Cancelados', description: 'Fora da produção' },
+  { status: 'received', title: 'Recebidos', description: 'Entraram agora', icon: Clock3 },
+  { status: 'preparing', title: 'Em preparo', description: 'Na produção', icon: Flame },
+  { status: 'ready', title: 'Prontos', description: 'Aguardando entrega', icon: PackageCheck },
+  { status: 'delivered', title: 'Entregues', description: 'Finalizados', icon: Check },
+  { status: 'cancelled', title: 'Cancelados', description: 'Fora da produção', icon: XCircle },
 ]
 
 export function KitchenDashboard() {
@@ -31,7 +32,7 @@ export function KitchenDashboard() {
       <PageHeader
         eyebrow="Cozinha ao vivo"
         title="Fila de preparo"
-        description="Pedidos organizados por etapa, com alta legibilidade para monitor, balcão ou tablet."
+        description="Pedidos organizados por etapa, com leitura rápida para monitor, balcão ou tablet horizontal."
         actions={(
           <button className="alert-button" type="button" onClick={() => void query.reload()}>
             <BellRing size={20} />
@@ -44,6 +45,7 @@ export function KitchenDashboard() {
         <MetricCard icon={Clock3} label="Recebidos" value={String(countStatus(orders, 'received'))} detail="aguardando início" tone="warning" />
         <MetricCard icon={Flame} label="Em preparo" value={String(countStatus(orders, 'preparing'))} detail="na cozinha" tone="info" />
         <MetricCard icon={Check} label="Prontos" value={String(countStatus(orders, 'ready'))} detail="aguardando entrega" tone="success" />
+        <MetricCard icon={ChefHat} label="Total na tela" value={String(orders.length)} detail="pedidos monitorados" tone="neutral" />
       </div>
 
       <KitchenOrdersBoard query={query} />
@@ -111,6 +113,7 @@ function KitchenOrdersBoard({ query }: KitchenOrdersBoardProps) {
           status={column.status}
           title={column.title}
           description={column.description}
+          icon={column.icon}
           orders={orders.filter((order) => order.status === column.status)}
           updatingId={updatingId}
           onUpdate={updateStatus}

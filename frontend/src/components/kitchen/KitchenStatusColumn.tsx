@@ -1,22 +1,29 @@
 import { KitchenOrderCard } from './KitchenOrderCard'
+import type { LucideIcon } from 'lucide-react'
 import type { ApiOrder } from '../../types'
 
 type KitchenStatusColumnProps = {
   status: ApiOrder['status']
   title: string
   description: string
+  icon: LucideIcon
   orders: ApiOrder[]
   updatingId: number | null
   onUpdate: (order: ApiOrder, status: ApiOrder['status']) => Promise<void>
 }
 
-export function KitchenStatusColumn({ status, title, description, orders, updatingId, onUpdate }: KitchenStatusColumnProps) {
+export function KitchenStatusColumn({ status, title, description, icon: Icon, orders, updatingId, onUpdate }: KitchenStatusColumnProps) {
   return (
     <section className={`kitchen-lane kitchen-lane--${status}`}>
       <div className="kitchen-lane__header">
-        <div>
-          <h2>{title}</h2>
-          <span>{description}</span>
+        <div className="kitchen-lane__title">
+          <span className={`kitchen-lane__icon kitchen-lane__icon--${status}`} aria-hidden="true">
+            <Icon size={18} />
+          </span>
+          <div>
+            <h2>{title}</h2>
+            <span>{description}</span>
+          </div>
         </div>
         <strong>{orders.length}</strong>
       </div>

@@ -1,4 +1,4 @@
-import { Check, Clock3, Flame, PackageCheck, XCircle } from 'lucide-react'
+import { Check, Clock3, Flame, PackageCheck, ReceiptText, StickyNote, XCircle } from 'lucide-react'
 import { StatusBadge } from '../ui/StatusBadge'
 import { formatDateTime } from '../../services/format'
 import type { ApiOrder, StatusTone } from '../../types'
@@ -32,7 +32,7 @@ export function KitchenOrderCard({ order, updating, onUpdate }: KitchenOrderCard
     <article className={`kitchen-card kitchen-card--${order.status}`}>
       <div className="kitchen-card__header">
         <div>
-          <span>{order.code}</span>
+          <span className="kitchen-card__code">{order.code}</span>
           <h2>{order.table?.name ?? `Mesa ${order.table_id}`}</h2>
         </div>
         <StatusBadge label={kitchenStatusLabel[order.status]} tone={kitchenStatusTone[order.status]} />
@@ -40,14 +40,14 @@ export function KitchenOrderCard({ order, updating, onUpdate }: KitchenOrderCard
 
       <div className="compact-meta">
         <span><Clock3 size={16} /> {order.sent_at ? formatDateTime(order.sent_at) : 'Agora'}</span>
-        <span><PackageCheck size={16} /> {items.length} item{items.length === 1 ? '' : 's'}</span>
+        <span><ReceiptText size={16} /> {items.length} item{items.length === 1 ? '' : 's'}</span>
       </div>
 
       <div className="kitchen-card__items">
         {items.map((item) => (
           <div className={item.notes ? 'kitchen-item kitchen-item--note' : 'kitchen-item'} key={`${order.id}-${item.id}`}>
-            <strong>{item.quantity}x {item.product_name}</strong>
-            {item.notes ? <small>{item.notes}</small> : null}
+            <strong><span>{item.quantity}x</span> {item.product_name}</strong>
+            {item.notes ? <small><StickyNote size={15} /> {item.notes}</small> : null}
           </div>
         ))}
       </div>
