@@ -1124,8 +1124,8 @@ code {
 }
 
 .toggle-row input[type="checkbox"] {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   accent-color: var(--primary);
 }
 
