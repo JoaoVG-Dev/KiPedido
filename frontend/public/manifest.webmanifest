@@ -1,0 +1,28 @@
+{
+  "id": "/",
+  "name": "KiPedido",
+  "short_name": "KiPedido",
+  "description": "Operacao de pedidos, cozinha, caixa e administracao para restaurantes.",
+  "start_url": "/tablet/mesa-01-teste",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "browser"],
+  "orientation": "any",
+  "background_color": "#fff7ed",
+  "theme_color": "#f97316",
+  "categories": ["food", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

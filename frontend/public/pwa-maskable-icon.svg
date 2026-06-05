@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KiPedido">
+  <rect width="512" height="512" fill="#f97316"/>
+  <circle cx="256" cy="256" r="208" fill="#fff7ed"/>
+  <path d="M150 126h66v120l116-120h82L292 252l132 134h-90L216 268v118h-66V126Z" fill="#9a3412"/>
+  <circle cx="374" cy="132" r="26" fill="#1f2937"/>
+</svg>
