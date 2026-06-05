@@ -147,6 +147,17 @@ A fase premium atual consolidou o Tablet como experiencia principal e alinhou Co
 
 Antes de publicar uma nova etapa visual, valide backend, lint, typecheck, build e uma passada responsiva nos principais tamanhos de uso.
 
+## Nota Da Fase Produto/PWA
+
+A fase atual aproxima o KiPedido de uma operacao instalavel em restaurante:
+
+- PWA: manifest, metadados, icones e service worker simples para permitir instalacao em navegadores/tablets compativeis.
+- Tablet: estados de mesa mais claros e bloqueio visual de novos pedidos quando a conta ja foi solicitada ou a mesa nao esta disponivel.
+- Impressao simples: cozinha pode imprimir a comanda do pedido e caixa pode imprimir o recibo/conta via `window.print`, sem integracao com impressora termica ainda.
+- Admin: resumos operacionais de mesas/produtos, ativacao/pausa de produtos e configuracoes basicas editaveis do restaurante.
+
+Esta fase nao adiciona pagamento real, multi-tenant ou integracao fiscal.
+
 Tamanhos recomendados para conferencia manual:
 
 ```txt
