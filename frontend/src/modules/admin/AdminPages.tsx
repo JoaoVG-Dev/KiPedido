@@ -3,8 +3,10 @@ import {
   Bell,
   ClipboardList,
   FileBarChart,
+  PackageCheck,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Settings,
   ShieldCheck,
@@ -12,6 +14,7 @@ import {
   UserRoundPlus,
   Utensils,
 } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { MetricCard } from '../../components/shared/MetricCard'
 import { PageHeader } from '../../components/shared/PageHeader'
@@ -19,13 +22,14 @@ import { ApiStateMessage, StateMessage } from '../../components/shared/StateMess
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useApiQuery } from '../../hooks/useApiQuery'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { apiGet } from '../../services/api'
+import { apiGet, apiPost, apiPut } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../services/format'
 import type {
   ApiActionLog,
   ApiCategory,
   ApiDashboard,
   ApiProduct,
+  ApiRestaurantSettings,
   ApiRestaurantTable,
   ApiUser,
   PaginatedResponse,
@@ -122,6 +126,7 @@ export function AdminDashboard() {
 export function AdminTablesPage() {
   usePageTitle('Mesas')
   const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiRestaurantTable>>('/admin/tables'), [])
+  const tables = data?.data ?? []
 
   return (
     <section className="page-stack admin-page">
@@ -137,6 +142,8 @@ export function AdminTablesPage() {
         )}
       />
 
+      {!isLoading && !error ? <AdminTableSummary tables={tables} /> : null}
+
       <section className="panel">
         <div className="toolbar">
           <label className="search-box">
@@ -151,7 +158,7 @@ export function AdminTablesPage() {
 
         {isLoading ? <StateMessage title="Carregando mesas..." tone="loading" /> : null}
         {error ? <ApiStateMessage error={error} /> : null}
-        {!isLoading && !error ? <TableDataTable tables={data?.data ?? []} /> : null}
+        {!isLoading && !error ? <TableDataTable tables={tables} /> : null}
       </section>
     </section>
   )
@@ -173,8 +180,8 @@ export function AdminCategoriesPage() {
       emptyTitle="Nenhuma categoria cadastrada."
       rows={(data?.data ?? []).map((category) => [
         category.name,
-        category.description ?? 'Sem descrição',
-        category.is_active ? 'Ativa' : 'Inativa',
+        `${category.products_count ?? 0} produto${category.products_count === 1 ? '' : 's'} · ${category.description ?? 'Sem descrição'}`,
+        `${category.is_active ? 'Ativa' : 'Inativa'} · ordem ${category.sort_order}`,
       ])}
       columns={['Categoria', 'Descrição', 'Status']}
     />
@@ -183,8 +190,22 @@ export function AdminCategoriesPage() {
 
 export function AdminProductsPage() {
   usePageTitle('Produtos')
-  const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiProduct>>('/admin/products'), [])
+  const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiProduct>>('/admin/products'), [])
   const products = data?.data ?? []
+  const activeProducts = products.filter((product) => product.is_active)
+  const visibleProducts = activeProducts.filter((product) => product.is_available)
+  const [updatingProductId, setUpdatingProductId] = useState<number | null>(null)
+
+  async function toggleProduct(product: ApiProduct) {
+    setUpdatingProductId(product.id)
+
+    try {
+      await apiPost<ApiProduct>(`/admin/products/${product.id}/toggle-availability`)
+      await reload()
+    } finally {
+      setUpdatingProductId(null)
+    }
+  }
 
   return (
     <section className="page-stack admin-page">
@@ -204,6 +225,14 @@ export function AdminProductsPage() {
       {error ? <ApiStateMessage error={error} /> : null}
       {!isLoading && !error && products.length === 0 ? <StateMessage title="Nenhum produto cadastrado." /> : null}
 
+      {!isLoading && !error ? (
+        <div className="admin-ops-strip">
+          <MetricCard icon={PackageCheck} label="Ativos" value={String(activeProducts.length)} detail="no cadastro" tone="info" />
+          <MetricCard icon={Utensils} label="Visíveis no tablet" value={String(visibleProducts.length)} detail="vendendo agora" tone="success" />
+          <MetricCard icon={Tags} label="Pausados" value={String(activeProducts.length - visibleProducts.length)} detail="fora do cardápio" tone="warning" />
+        </div>
+      ) : null}
+
       <div className="product-grid">
         {products.map((product) => (
           <article className="product-card" key={product.id}>
@@ -220,6 +249,11 @@ export function AdminProductsPage() {
               <div className="product-card__footer">
                 <strong>{formatCurrency(product.price)}</strong>
                 <small>{product.is_available ? 'Visível no tablet' : 'Oculto no cardápio'}</small>
+              </div>
+              <div className="product-card__actions">
+                <button className="secondary-button" type="button" disabled={updatingProductId === product.id} onClick={() => void toggleProduct(product)}>
+                  {product.is_available ? 'Pausar venda' : 'Ativar venda'}
+                </button>
               </div>
             </div>
           </article>
@@ -246,7 +280,7 @@ export function AdminUsersPage() {
       rows={(data?.data ?? []).map((user) => [
         user.name,
         user.email,
-        `${user.role}${user.is_active ? '' : ' inativo'}`,
+        `${adminRoleLabel(user.role)}${user.is_active ? '' : ' · inativo'}`,
       ])}
       columns={['Usuário', 'Email', 'Perfil']}
     />
@@ -255,7 +289,7 @@ export function AdminUsersPage() {
 
 export function AdminSettingsPage() {
   usePageTitle('Configurações')
-  const { data, error, isLoading } = useApiQuery(() => apiGet<ApiDashboard['settings']>('/admin/settings'), [])
+  const { data, error, isLoading, reload } = useApiQuery(() => apiGet<ApiRestaurantSettings>('/admin/settings'), [])
 
   return (
     <section className="page-stack admin-page">
@@ -267,32 +301,110 @@ export function AdminSettingsPage() {
 
       {isLoading ? <StateMessage title="Carregando configurações..." tone="loading" /> : null}
       {error ? <ApiStateMessage error={error} /> : null}
-      {data ? (
-        <section className="settings-grid">
-          <label>
-            Nome do restaurante
-            <input value={data.restaurant_name} readOnly />
-          </label>
-          <label>
-            Taxa de serviço (%)
-            <input value={String(data.service_fee_percentage)} readOnly />
-          </label>
-          <label>
-            Moeda
-            <input value={data.currency} readOnly />
-          </label>
-          <div className="toggle-row">
-            <Settings size={20} />
-            <span>
-              <strong>Configurações carregadas da API</strong>
-              <small>Fonte única para operação, caixa, cozinha e tablet.</small>
-            </span>
-            <StatusBadge label="Somente leitura" tone="info" />
-          </div>
-        </section>
-      ) : null}
+      {data ? <RestaurantSettingsForm key={settingsFormKey(data)} settings={data} onSaved={reload} /> : null}
     </section>
   )
+}
+
+type SettingsFormState = {
+  restaurant_name: string
+  service_fee_percentage: string
+  currency: string
+  printer_enabled: boolean
+  sound_alerts_enabled: boolean
+}
+
+function RestaurantSettingsForm({ settings, onSaved }: { settings: ApiRestaurantSettings; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState<SettingsFormState>(() => settingsToForm(settings))
+  const [success, setSuccess] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSuccess(null)
+    setError(null)
+    setIsSaving(true)
+
+    try {
+      await apiPut<ApiRestaurantSettings>('/admin/settings', {
+        ...form,
+        currency: form.currency.toUpperCase(),
+        service_fee_percentage: Number(form.service_fee_percentage),
+      })
+      setSuccess('Configurações salvas com sucesso.')
+      await onSaved()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Não foi possível salvar as configurações.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <form className="settings-form" onSubmit={(event) => void submit(event)}>
+      {success ? <StateMessage title={success} tone="success" /> : null}
+      {error ? <StateMessage title={error} tone="error" /> : null}
+
+      <section className="settings-grid">
+        <label>
+          Nome do restaurante
+          <input value={form.restaurant_name} onChange={(event) => setForm((current) => ({ ...current, restaurant_name: event.target.value }))} />
+        </label>
+        <label>
+          Taxa de serviço (%)
+          <input type="number" min="0" max="100" step="0.01" value={form.service_fee_percentage} onChange={(event) => setForm((current) => ({ ...current, service_fee_percentage: event.target.value }))} />
+        </label>
+        <label>
+          Moeda
+          <input maxLength={3} value={form.currency} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))} />
+        </label>
+        <div className="toggle-row">
+          <Settings size={20} />
+          <span>
+            <strong>Impressão operacional</strong>
+            <small>Controla se a operação deve usar os atalhos de impressão simples.</small>
+          </span>
+          <input type="checkbox" checked={form.printer_enabled} onChange={(event) => setForm((current) => ({ ...current, printer_enabled: event.target.checked }))} />
+        </div>
+        <div className="toggle-row">
+          <Bell size={20} />
+          <span>
+            <strong>Alertas sonoros</strong>
+            <small>Prepara a cozinha e o caixa para avisos operacionais em tempo real.</small>
+          </span>
+          <input type="checkbox" checked={form.sound_alerts_enabled} onChange={(event) => setForm((current) => ({ ...current, sound_alerts_enabled: event.target.checked }))} />
+        </div>
+      </section>
+
+      <div className="settings-form__actions">
+        <button className="primary-button" type="submit" disabled={isSaving}>
+          <Save size={18} />
+          {isSaving ? 'Salvando...' : 'Salvar configurações'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function settingsToForm(settings: ApiRestaurantSettings): SettingsFormState {
+  return {
+    restaurant_name: settings.restaurant_name,
+    service_fee_percentage: String(settings.service_fee_percentage),
+    currency: settings.currency,
+    printer_enabled: settings.printer_enabled,
+    sound_alerts_enabled: settings.sound_alerts_enabled,
+  }
+}
+
+function settingsFormKey(settings: ApiRestaurantSettings) {
+  return [
+    settings.restaurant_name,
+    settings.service_fee_percentage,
+    settings.currency,
+    settings.printer_enabled ? 'printer-on' : 'printer-off',
+    settings.sound_alerts_enabled ? 'sound-on' : 'sound-off',
+  ].join(':')
 }
 
 export function AdminReportsPage() {
@@ -344,6 +456,22 @@ export function AdminLogsPage() {
       ])}
       columns={['Ação', 'Evento', 'Horário']}
     />
+  )
+}
+
+function AdminTableSummary({ tables }: { tables: ApiRestaurantTable[] }) {
+  const available = tables.filter((table) => table.status === 'available').length
+  const occupied = tables.filter((table) => table.status === 'occupied').length
+  const waitingPayment = tables.filter((table) => table.status === 'waiting_payment').length
+  const inactive = tables.filter((table) => !table.is_active || table.status === 'inactive').length
+
+  return (
+    <div className="admin-ops-strip">
+      <MetricCard icon={Utensils} label="Livres" value={String(available)} detail="prontas para abrir" tone="success" />
+      <MetricCard icon={ClipboardList} label="Em uso" value={String(occupied)} detail="com consumo ativo" tone="info" />
+      <MetricCard icon={BadgeDollarSign} label="Aguardando conta" value={String(waitingPayment)} detail="prioridade do caixa" tone="warning" />
+      <MetricCard icon={ShieldCheck} label="Inativas" value={String(inactive)} detail="fora da operação" tone="neutral" />
+    </div>
   )
 }
 
@@ -453,4 +581,13 @@ function adminSessionStatusLabel(status: NonNullable<ApiRestaurantTable['active_
     paid: 'Conta paga',
     cancelled: 'Sessão cancelada',
   }[status]
+}
+
+function adminRoleLabel(role: ApiUser['role']) {
+  return {
+    admin: 'Administrador',
+    manager: 'Gerente',
+    cashier: 'Caixa',
+    kitchen: 'Cozinha',
+  }[role]
 }
