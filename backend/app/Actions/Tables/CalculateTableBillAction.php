@@ -13,7 +13,7 @@ class CalculateTableBillAction
     {
         $session = TableSession::query()
             ->where('table_id', $table->id)
-            ->whereIn('status', ['open', 'waiting_payment'])
+            ->whereIn('status', ['open', 'waiting_payment', 'paid'])
             ->latest()
             ->first();
 
@@ -51,11 +51,11 @@ class CalculateTableBillAction
         $changeAmount = max(round($paidAmount - $total, 2), 0);
 
         $session->refresh()->load([
-            'orders' => fn ($query) => $query
+            'orders' => fn($query) => $query
                 ->where('status', '!=', 'cancelled')
                 ->with('items')
                 ->latest('sent_at'),
-            'payments' => fn ($query) => $query
+            'payments' => fn($query) => $query
                 ->where('status', 'paid')
                 ->latest('paid_at'),
         ]);
