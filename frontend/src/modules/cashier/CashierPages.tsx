@@ -1,5 +1,5 @@
 import { BadgeDollarSign, CreditCard, Percent, Printer, ReceiptText, RefreshCw, Unlock, Utensils } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { BillSummaryCard } from '../../components/cashier/BillSummaryCard'
 import { TableStatusCard } from '../../components/cashier/TableStatusCard'
@@ -14,6 +14,15 @@ import { apiGet, apiPost } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../services/format'
 import { printArea } from '../../services/print'
 import type { ApiOrder, ApiPayment, ApiRestaurantTable, StatusTone, TableBillResponse } from '../../types'
+
+type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix'
+
+const paymentMethodOptions: Array<{ value: PaymentMethod; label: string }> = [
+  { value: 'pix', label: 'PIX' },
+  { value: 'cash', label: 'Dinheiro' },
+  { value: 'credit_card', label: 'Cartão de crédito' },
+  { value: 'debit_card', label: 'Cartão de débito' },
+]
 
 export function CashierDashboard() {
   usePageTitle('Caixa')
@@ -113,18 +122,39 @@ export function CashierTableDetailPage() {
   const printId = `cashier-table-${id}`
   const [success, setSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
+  const [amountPaid, setAmountPaid] = useState<string | null>(null)
+
+  const totalAmount = Number(billQuery.data?.total_amount ?? 0)
+  const amountPaidValue = amountPaid ?? String(totalAmount)
+  const parsedAmountPaid = Number(amountPaidValue || 0)
+  const changeAmount = Math.max(parsedAmountPaid - totalAmount, 0)
+  const isAmountInsufficient = Boolean(amountPaidValue) && parsedAmountPaid < totalAmount
+
+  const selectedPaymentLabel = useMemo(() => {
+    return paymentMethodOptions.find((option) => option.value === paymentMethod)?.label ?? 'PIX'
+  }, [paymentMethod])
 
   async function closeTable() {
     setSuccess(null)
     setActionError(null)
 
+    if (!billQuery.data) {
+      setActionError('Carregue a conta antes de finalizar o pagamento.')
+      return
+    }
+
+    if (parsedAmountPaid < totalAmount) {
+      setActionError('O valor pago não pode ser menor que o total da conta.')
+      return
+    }
+
     try {
-      const bill = billQuery.data
       await apiPost<ApiPayment>(`/cashier/tables/${id}/close`, {
-        payment_method: 'pix',
-        amount_paid: bill?.total_amount ?? 0,
+        payment_method: paymentMethod,
+        amount_paid: parsedAmountPaid,
       })
-      setSuccess('Conta fechada com sucesso.')
+      setSuccess(`Conta fechada com sucesso via ${selectedPaymentLabel}.`)
       await tableQuery.reload()
       await billQuery.reload().catch(() => undefined)
     } catch (caught) {
@@ -165,22 +195,68 @@ export function CashierTableDetailPage() {
         <section className="panel cashier-actions no-print">
           <span className="eyebrow">Ações do caixa</span>
           <h2>Finalizar atendimento</h2>
+
+          <div className="cashier-payment-form">
+            <label>
+              <span>Forma de pagamento</span>
+              <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}>
+                {paymentMethodOptions.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Valor recebido</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={amountPaidValue}
+                onChange={(event) => setAmountPaid(event.target.value)}
+                placeholder="0,00"
+              />
+            </label>
+
+            <div className="cashier-payment-preview">
+              <span>Total da conta</span>
+              <strong>{formatCurrency(totalAmount)}</strong>
+            </div>
+
+            <div className="cashier-payment-preview">
+              <span>Troco</span>
+              <strong>{formatCurrency(changeAmount)}</strong>
+            </div>
+
+            {isAmountInsufficient ? (
+              <small className="cashier-payment-error">
+                O valor recebido está menor que o total da conta.
+              </small>
+            ) : null}
+          </div>
+
           <button className="secondary-button" type="button" disabled>
             <Percent size={18} />
             Aplicar desconto
           </button>
+
           <button className="secondary-button no-print" type="button" disabled={!billQuery.data} onClick={() => printArea(printId, 'cashier')}>
             <Printer size={18} />
             Imprimir recibo
           </button>
-          <button className="primary-button" type="button" disabled={!billQuery.data} onClick={() => void closeTable()}>
+
+          <button className="primary-button" type="button" disabled={!billQuery.data || isAmountInsufficient} onClick={() => void closeTable()}>
             <ReceiptText size={18} />
-            Fechar conta como PIX
+            Fechar conta via {selectedPaymentLabel}
           </button>
+
           <button className="secondary-button" type="button" onClick={() => void releaseTable()}>
             <Unlock size={18} />
             Liberar mesa
           </button>
+
           <button className="secondary-button" type="button" onClick={() => { void tableQuery.reload(); void billQuery.reload() }}>
             <RefreshCw size={18} />
             Atualizar
