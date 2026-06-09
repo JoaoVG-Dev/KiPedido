@@ -1,36 +1,67 @@
-import { BadgeDollarSign, CreditCard, Percent, Printer, ReceiptText, RefreshCw, Unlock, Utensils } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { BillSummaryCard } from '../../components/cashier/BillSummaryCard'
-import { TableStatusCard } from '../../components/cashier/TableStatusCard'
-import { cashierTableStatusLabel, cashierTableStatusTone } from '../../components/cashier/tableStatusMeta'
-import { MetricCard } from '../../components/shared/MetricCard'
-import { PageHeader } from '../../components/shared/PageHeader'
-import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
-import { StatusBadge } from '../../components/ui/StatusBadge'
-import { useApiQuery } from '../../hooks/useApiQuery'
-import { usePageTitle } from '../../hooks/usePageTitle'
-import { apiGet, apiPost } from '../../services/api'
-import { formatCurrency, formatDateTime } from '../../services/format'
-import { printArea } from '../../services/print'
-import type { ApiOrder, ApiPayment, ApiRestaurantTable, StatusTone, TableBillResponse } from '../../types'
+import {
+  BadgeDollarSign,
+  CreditCard,
+  Percent,
+  Printer,
+  ReceiptText,
+  RefreshCw,
+  Unlock,
+  Utensils,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { BillSummaryCard } from "../../components/cashier/BillSummaryCard";
+import { TableStatusCard } from "../../components/cashier/TableStatusCard";
+import {
+  cashierTableStatusLabel,
+  cashierTableStatusTone,
+} from "../../components/cashier/tableStatusMeta";
+import { MetricCard } from "../../components/shared/MetricCard";
+import { PageHeader } from "../../components/shared/PageHeader";
+import {
+  ApiStateMessage,
+  StateMessage,
+} from "../../components/shared/StateMessage";
+import { StatusBadge } from "../../components/ui/StatusBadge";
+import { useApiQuery } from "../../hooks/useApiQuery";
+import { usePageTitle } from "../../hooks/usePageTitle";
+import { apiGet, apiPost } from "../../services/api";
+import { formatCurrency, formatDateTime } from "../../services/format";
+import { printArea } from "../../services/print";
+import type {
+  ApiOrder,
+  ApiPayment,
+  ApiRestaurantTable,
+  StatusTone,
+  TableBillResponse,
+} from "../../types";
 
-type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix'
+type PaymentMethod = "cash" | "credit_card" | "debit_card" | "pix";
 
 const paymentMethodOptions: Array<{ value: PaymentMethod; label: string }> = [
-  { value: 'pix', label: 'PIX' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'credit_card', label: 'Cartão de crédito' },
-  { value: 'debit_card', label: 'Cartão de débito' },
-]
+  { value: "pix", label: "PIX" },
+  { value: "cash", label: "Dinheiro" },
+  { value: "credit_card", label: "Cartão de crédito" },
+  { value: "debit_card", label: "Cartão de débito" },
+];
 
 export function CashierDashboard() {
-  usePageTitle('Caixa')
-  const query = useApiQuery(() => apiGet<ApiRestaurantTable[]>('/cashier/tables'), [])
-  const tables = query.data ?? []
-  const openTables = tables.filter((table) => ['occupied', 'waiting_payment'].includes(table.status))
-  const waitingPayment = tables.filter((table) => table.status === 'waiting_payment')
-  const amountToReceive = openTables.reduce((sum, table) => sum + Number(table.active_session?.total_amount ?? 0), 0)
+  usePageTitle("Caixa");
+  const query = useApiQuery(
+    () => apiGet<ApiRestaurantTable[]>("/cashier/tables"),
+    [],
+  );
+  const tables = query.data ?? [];
+  const openTables = tables.filter((table) =>
+    ["occupied", "waiting_payment"].includes(table.status),
+  );
+  const waitingPayment = tables.filter(
+    (table) => table.status === "waiting_payment",
+  );
+  const amountToReceive = openTables.reduce(
+    (sum, table) => sum + Number(table.active_session?.total_amount ?? 0),
+    0,
+  );
 
   return (
     <section className="page-stack cashier-page">
@@ -38,69 +69,108 @@ export function CashierDashboard() {
         eyebrow="Caixa"
         title="Fechamento de mesas"
         description="Acompanhe consumo aberto, mesas aguardando pagamento e liberação para o salão."
-        actions={(
-          <button className="secondary-button" type="button" onClick={() => void query.reload()}>
+        actions={
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void query.reload()}
+          >
             <RefreshCw size={18} />
             Atualizar
           </button>
-        )}
+        }
       />
 
       <div className="metrics-grid">
-        <MetricCard icon={Utensils} label="Mesas abertas" value={String(openTables.length)} detail={`${waitingPayment.length} pediu conta`} tone="info" />
-        <MetricCard icon={BadgeDollarSign} label="A receber" value={formatCurrency(amountToReceive)} detail="consumo aberto" tone="warning" />
-        <MetricCard icon={CreditCard} label="Mesas livres" value={String(tables.filter((table) => table.status === 'available').length)} detail="disponíveis agora" tone="success" />
+        <MetricCard
+          icon={Utensils}
+          label="Mesas abertas"
+          value={String(openTables.length)}
+          detail={`${waitingPayment.length} pediu conta`}
+          tone="info"
+        />
+        <MetricCard
+          icon={BadgeDollarSign}
+          label="A receber"
+          value={formatCurrency(amountToReceive)}
+          detail="consumo aberto"
+          tone="warning"
+        />
+        <MetricCard
+          icon={CreditCard}
+          label="Mesas livres"
+          value={String(
+            tables.filter((table) => table.status === "available").length,
+          )}
+          detail="disponíveis agora"
+          tone="success"
+        />
       </div>
 
       <CashierTablesPanel query={query} />
     </section>
-  )
+  );
 }
 
-export function CashierTablesPage({ embedded = false }: { embedded?: boolean }) {
-  usePageTitle('Mesas do caixa')
-  const query = useApiQuery(() => apiGet<ApiRestaurantTable[]>('/cashier/tables'), [])
+export function CashierTablesPage({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
+  usePageTitle("Mesas do caixa");
+  const query = useApiQuery(
+    () => apiGet<ApiRestaurantTable[]>("/cashier/tables"),
+    [],
+  );
 
   return (
-    <section className={embedded ? 'panel cashier-page-panel' : 'page-stack cashier-page'}>
+    <section
+      className={
+        embedded ? "panel cashier-page-panel" : "page-stack cashier-page"
+      }
+    >
       {!embedded ? (
         <PageHeader
           eyebrow="Mesas"
           title="Consumo por mesa"
           description="Veja status, total atual e abra o fechamento de qualquer mesa."
-          actions={(
-            <button className="secondary-button" type="button" onClick={() => void query.reload()}>
+          actions={
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void query.reload()}
+            >
               <RefreshCw size={18} />
               Atualizar
             </button>
-          )}
+          }
         />
       ) : null}
       <CashierTablesPanel query={query} />
     </section>
-  )
+  );
 }
 
 type CashierTablesQuery = {
-  data: ApiRestaurantTable[] | null
-  error: Error | null
-  isLoading: boolean
-  reload: () => Promise<void>
-}
+  data: ApiRestaurantTable[] | null;
+  error: Error | null;
+  isLoading: boolean;
+  reload: () => Promise<void>;
+};
 
 function CashierTablesPanel({ query }: { query: CashierTablesQuery }) {
-  const tables = query.data ?? []
+  const tables = query.data ?? [];
 
   if (query.isLoading) {
-    return <StateMessage title="Carregando mesas do caixa..." tone="loading" />
+    return <StateMessage title="Carregando mesas do caixa..." tone="loading" />;
   }
 
   if (query.error) {
-    return <ApiStateMessage error={query.error} />
+    return <ApiStateMessage error={query.error} />;
   }
 
   if (tables.length === 0) {
-    return <StateMessage title="Nenhuma mesa cadastrada." />
+    return <StateMessage title="Nenhuma mesa cadastrada." />;
   }
 
   return (
@@ -109,125 +179,223 @@ function CashierTablesPanel({ query }: { query: CashierTablesQuery }) {
         <TableStatusCard table={table} key={table.id} />
       ))}
     </div>
-  )
+  );
 }
 
 export function CashierTableDetailPage() {
-  usePageTitle('Detalhe da mesa')
-  const { id = '1' } = useParams()
-  const tableQuery = useApiQuery(() => apiGet<ApiRestaurantTable[]>('/cashier/tables'), [])
-  const billQuery = useApiQuery(() => apiGet<TableBillResponse>(`/cashier/tables/${id}/bill`), [id])
-  const table = tableQuery.data?.find((item) => String(item.id) === id)
-  const orders = billQuery.data?.session.orders ?? []
-  const printId = `cashier-table-${id}`
-  const [success, setSuccess] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
-  const [amountPaid, setAmountPaid] = useState<string | null>(null)
+  usePageTitle("Detalhe da mesa");
+  const { id = "1" } = useParams();
+  const tableQuery = useApiQuery(
+    () => apiGet<ApiRestaurantTable[]>("/cashier/tables"),
+    [],
+  );
+  const billQuery = useApiQuery(
+    () => apiGet<TableBillResponse>(`/cashier/tables/${id}/bill`),
+    [id],
+  );
+  const table = tableQuery.data?.find((item) => String(item.id) === id);
+  const orders = billQuery.data?.session.orders ?? [];
+  const printId = `cashier-table-${id}`;
+  const [success, setSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [amountPaid, setAmountPaid] = useState<string | null>(null);
 
-  const totalAmount = Number(billQuery.data?.total_amount ?? 0)
-  const amountPaidValue = amountPaid ?? String(totalAmount)
-  const parsedAmountPaid = Number(amountPaidValue || 0)
-  const changeAmount = Math.max(parsedAmountPaid - totalAmount, 0)
-  const isAmountInsufficient = Boolean(amountPaidValue) && parsedAmountPaid < totalAmount
+  const totalAmount = Number(billQuery.data?.total_amount ?? 0);
+  const amountPaidValue = amountPaid ?? String(totalAmount);
+  const parsedAmountPaid = Number(amountPaidValue || 0);
+  const changeAmount = Math.max(parsedAmountPaid - totalAmount, 0);
+  const isAmountInsufficient =
+    Boolean(amountPaidValue) && parsedAmountPaid < totalAmount;
 
   const selectedPaymentLabel = useMemo(() => {
-    return paymentMethodOptions.find((option) => option.value === paymentMethod)?.label ?? 'PIX'
-  }, [paymentMethod])
+    return (
+      paymentMethodOptions.find((option) => option.value === paymentMethod)
+        ?.label ?? "PIX"
+    );
+  }, [paymentMethod]);
 
   async function closeTable() {
-    setSuccess(null)
-    setActionError(null)
+    setSuccess(null);
+    setActionError(null);
 
     if (!billQuery.data) {
-      setActionError('Carregue a conta antes de finalizar o pagamento.')
-      return
+      setActionError("Carregue a conta antes de finalizar o pagamento.");
+      return;
     }
 
     if (parsedAmountPaid < totalAmount) {
-      setActionError('O valor pago não pode ser menor que o total da conta.')
-      return
+      setActionError("O valor pago não pode ser menor que o total da conta.");
+      return;
     }
 
     try {
       await apiPost<ApiPayment>(`/cashier/tables/${id}/close`, {
         payment_method: paymentMethod,
         amount_paid: parsedAmountPaid,
-      })
-      setSuccess(`Conta fechada com sucesso via ${selectedPaymentLabel}.`)
-      await tableQuery.reload()
-      await billQuery.reload().catch(() => undefined)
+      });
+      setSuccess(`Conta fechada com sucesso via ${selectedPaymentLabel}.`);
+      await tableQuery.reload();
+      await billQuery.reload().catch(() => undefined);
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : 'Erro ao fechar conta.')
+      setActionError(
+        caught instanceof Error ? caught.message : "Erro ao fechar conta.",
+      );
     }
   }
 
   async function releaseTable() {
-    setSuccess(null)
-    setActionError(null)
+    setSuccess(null);
+    setActionError(null);
 
     try {
-      await apiPost<ApiRestaurantTable>(`/cashier/tables/${id}/release`)
-      setSuccess('Mesa liberada com sucesso.')
-      await tableQuery.reload()
+      await apiPost<ApiRestaurantTable>(`/cashier/tables/${id}/release`);
+      setSuccess("Mesa liberada com sucesso.");
+      await tableQuery.reload();
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : 'Erro ao liberar mesa.')
+      setActionError(
+        caught instanceof Error ? caught.message : "Erro ao liberar mesa.",
+      );
     }
   }
 
   return (
-    <section className="page-stack cashier-page printable-area" data-print-id={printId}>
+    <section
+      className="page-stack cashier-page printable-area"
+      data-print-id={printId}
+    >
       <PageHeader
         eyebrow="Fechamento"
         title={table?.name ?? `Mesa ${id}`}
         description="Confira o recibo, os pedidos da sessão e finalize o pagamento."
-        actions={table ? <StatusBadge label={cashierTableStatusLabel[table.status]} tone={cashierTableStatusTone[table.status]} /> : null}
+        actions={
+          table ? (
+            <StatusBadge
+              label={cashierTableStatusLabel[table.status]}
+              tone={cashierTableStatusTone[table.status]}
+            />
+          ) : null
+        }
       />
 
-      {tableQuery.isLoading ? <StateMessage title="Carregando mesa..." tone="loading" /> : null}
+      {tableQuery.isLoading ? (
+        <StateMessage title="Carregando mesa..." tone="loading" />
+      ) : null}
       {tableQuery.error ? <ApiStateMessage error={tableQuery.error} /> : null}
       {success ? <StateMessage title={success} tone="success" /> : null}
       {actionError ? <StateMessage title={actionError} tone="error" /> : null}
 
       <div className="cashier-detail-grid">
-        <BillSummaryCard bill={billQuery.data} isLoading={billQuery.isLoading} error={billQuery.error} />
+        <BillSummaryCard
+          bill={billQuery.data}
+          isLoading={billQuery.isLoading}
+          error={billQuery.error}
+        />
 
         <section className="panel cashier-actions no-print">
           <span className="eyebrow">Ações do caixa</span>
           <h2>Finalizar atendimento</h2>
 
           <div className="cashier-payment-form">
-            <label>
-              <span>Forma de pagamento</span>
-              <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}>
-                {paymentMethodOptions.map((option) => (
-                  <option value={option.value} key={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Valor recebido</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={amountPaidValue}
-                onChange={(event) => setAmountPaid(event.target.value)}
-                placeholder="0,00"
-              />
-            </label>
-
-            <div className="cashier-payment-preview">
-              <span>Total da conta</span>
-              <strong>{formatCurrency(totalAmount)}</strong>
+            <div className="cashier-payment-header">
+              <div>
+                <span className="eyebrow">Pagamento</span>
+                <strong>Como o cliente vai pagar?</strong>
+              </div>
+              <span>{selectedPaymentLabel}</span>
             </div>
 
-            <div className="cashier-payment-preview">
-              <span>Troco</span>
-              <strong>{formatCurrency(changeAmount)}</strong>
+            <div className="cashier-payment-method-grid">
+              {paymentMethodOptions.map((option) => (
+                <button
+                  className={
+                    option.value === paymentMethod
+                      ? "cashier-payment-method is-active"
+                      : "cashier-payment-method"
+                  }
+                  type="button"
+                  key={option.value}
+                  onClick={() => setPaymentMethod(option.value)}
+                >
+                  <span>{option.label}</span>
+                  {option.value === paymentMethod ? (
+                    <small>Selecionado</small>
+                  ) : (
+                    <small>Selecionar</small>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <label className="cashier-amount-field">
+              <span>Valor recebido</span>
+              <div
+                className={
+                  isAmountInsufficient
+                    ? "cashier-amount-input has-error"
+                    : "cashier-amount-input"
+                }
+              >
+                <small>R$</small>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amountPaidValue}
+                  onChange={(event) => setAmountPaid(event.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+            </label>
+
+            <div className="cashier-quick-amounts">
+              <button
+                type="button"
+                onClick={() => setAmountPaid(String(totalAmount))}
+              >
+                Valor exato
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmountPaid(String(totalAmount + 10))}
+              >
+                + R$ 10
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmountPaid(String(totalAmount + 20))}
+              >
+                + R$ 20
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmountPaid(String(totalAmount + 50))}
+              >
+                + R$ 50
+              </button>
+            </div>
+
+            <div className="cashier-payment-summary">
+              <div>
+                <span>Total da conta</span>
+                <strong>{formatCurrency(totalAmount)}</strong>
+              </div>
+
+              <div>
+                <span>Valor recebido</span>
+                <strong>{formatCurrency(parsedAmountPaid)}</strong>
+              </div>
+
+              <div className="cashier-payment-summary__total">
+                <span>{isAmountInsufficient ? "Falta receber" : "Troco"}</span>
+                <strong>
+                  {formatCurrency(
+                    isAmountInsufficient
+                      ? totalAmount - parsedAmountPaid
+                      : changeAmount,
+                  )}
+                </strong>
+              </div>
             </div>
 
             {isAmountInsufficient ? (
@@ -242,22 +410,43 @@ export function CashierTableDetailPage() {
             Aplicar desconto
           </button>
 
-          <button className="secondary-button no-print" type="button" disabled={!billQuery.data} onClick={() => printArea(printId, 'cashier')}>
+          <button
+            className="secondary-button no-print"
+            type="button"
+            disabled={!billQuery.data}
+            onClick={() => printArea(printId, "cashier")}
+          >
             <Printer size={18} />
             Imprimir recibo
           </button>
 
-          <button className="primary-button" type="button" disabled={!billQuery.data || isAmountInsufficient} onClick={() => void closeTable()}>
+          <button
+            className="primary-button"
+            type="button"
+            disabled={!billQuery.data || isAmountInsufficient}
+            onClick={() => void closeTable()}
+          >
             <ReceiptText size={18} />
             Fechar conta via {selectedPaymentLabel}
           </button>
 
-          <button className="secondary-button" type="button" onClick={() => void releaseTable()}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void releaseTable()}
+          >
             <Unlock size={18} />
             Liberar mesa
           </button>
 
-          <button className="secondary-button" type="button" onClick={() => { void tableQuery.reload(); void billQuery.reload() }}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => {
+              void tableQuery.reload();
+              void billQuery.reload();
+            }}
+          >
             <RefreshCw size={18} />
             Atualizar
           </button>
@@ -270,12 +459,18 @@ export function CashierTableDetailPage() {
             <span className="eyebrow">Consumo</span>
             <h2>Pedidos da sessão</h2>
           </div>
-          <span>{orders.length} pedido{orders.length === 1 ? '' : 's'}</span>
+          <span>
+            {orders.length} pedido{orders.length === 1 ? "" : "s"}
+          </span>
         </div>
-        {orders.length === 0 ? <StateMessage title="Nenhum pedido ativo para esta mesa." /> : <OrderList orders={orders} />}
+        {orders.length === 0 ? (
+          <StateMessage title="Nenhum pedido ativo para esta mesa." />
+        ) : (
+          <OrderList orders={orders} />
+        )}
       </section>
     </section>
-  )
+  );
 }
 
 function OrderList({ orders }: { orders: ApiOrder[] }) {
@@ -286,15 +481,24 @@ function OrderList({ orders }: { orders: ApiOrder[] }) {
           <div className="cashier-order-card__header">
             <div>
               <strong>{order.code}</strong>
-              <small>{order.sent_at ? formatDateTime(order.sent_at) : 'Horário em processamento'}</small>
+              <small>
+                {order.sent_at
+                  ? formatDateTime(order.sent_at)
+                  : "Horário em processamento"}
+              </small>
             </div>
-            <StatusBadge label={orderStatusLabel(order.status)} tone={orderStatusTone(order.status)} />
+            <StatusBadge
+              label={orderStatusLabel(order.status)}
+              tone={orderStatusTone(order.status)}
+            />
           </div>
           <div className="cashier-order-items">
             {(order.items ?? []).map((item) => (
               <div key={item.id}>
                 <span>
-                  <strong>{item.quantity}x {item.product_name}</strong>
+                  <strong>
+                    {item.quantity}x {item.product_name}
+                  </strong>
                   {item.notes ? <small>{item.notes}</small> : null}
                 </span>
                 <strong>{formatCurrency(item.total_price)}</strong>
@@ -304,27 +508,27 @@ function OrderList({ orders }: { orders: ApiOrder[] }) {
         </article>
       ))}
     </div>
-  )
+  );
 }
 
-function orderStatusLabel(status: ApiOrder['status']) {
+function orderStatusLabel(status: ApiOrder["status"]) {
   return {
-    received: 'Recebido',
-    preparing: 'Em preparo',
-    ready: 'Pronto',
-    delivered: 'Entregue',
-    cancelled: 'Cancelado',
-  }[status]
+    received: "Recebido",
+    preparing: "Em preparo",
+    ready: "Pronto",
+    delivered: "Entregue",
+    cancelled: "Cancelado",
+  }[status];
 }
 
-function orderStatusTone(status: ApiOrder['status']): StatusTone {
-  const tones: Record<ApiOrder['status'], StatusTone> = {
-    received: 'warning',
-    preparing: 'info',
-    ready: 'success',
-    delivered: 'neutral',
-    cancelled: 'danger',
-  }
+function orderStatusTone(status: ApiOrder["status"]): StatusTone {
+  const tones: Record<ApiOrder["status"], StatusTone> = {
+    received: "warning",
+    preparing: "info",
+    ready: "success",
+    delivered: "neutral",
+    cancelled: "danger",
+  };
 
-  return tones[status]
+  return tones[status];
 }
