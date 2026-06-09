@@ -68,6 +68,7 @@ export type ApiTableSession = {
   service_fee_amount: string | number
   total_amount: string | number
   orders?: ApiOrder[]
+  payments?: ApiPayment[]
 }
 
 export type ApiRestaurantTable = {
@@ -200,6 +201,9 @@ export type TableBillResponse = {
   service_fee_percentage: number
   service_fee_amount: number
   total_amount: number
+  paid_amount: number
+  remaining_amount: number
+  change_amount: number
 }
 
 export type TabletOrdersResponse = {
