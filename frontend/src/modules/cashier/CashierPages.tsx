@@ -202,6 +202,7 @@ export function CashierTableDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [amountPaid, setAmountPaid] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<string | null>(null);
 
   const totalAmount = Number(billQuery.data?.total_amount ?? 0);
   const paidAmount = Number(billQuery.data?.paid_amount ?? 0);
@@ -217,6 +218,20 @@ export function CashierTableDetailPage() {
   );
   const projectedChangeAmount = Math.max(projectedPaidAmount - totalAmount, 0);
   const isAmountInvalid = Boolean(amountPaidValue) && parsedAmountPaid <= 0;
+
+  const currentDiscountAmount = Number(billQuery.data?.discount_amount ?? 0);
+  const maxDiscountAmount = Math.max(
+    Number(billQuery.data?.subtotal ?? 0) +
+      Number(billQuery.data?.service_fee_amount ?? 0),
+    0,
+  );
+  const discountAmountValue =
+    discountAmount ??
+    (currentDiscountAmount > 0 ? String(currentDiscountAmount) : "");
+  const parsedDiscountAmount = Number(discountAmountValue || 0);
+  const isDiscountInvalid =
+    Boolean(discountAmountValue) &&
+    (parsedDiscountAmount < 0 || parsedDiscountAmount > maxDiscountAmount);
 
   const selectedPaymentLabel = useMemo(() => {
     return (
@@ -262,6 +277,48 @@ export function CashierTableDetailPage() {
         caught instanceof Error
           ? caught.message
           : "Erro ao registrar pagamento.",
+      );
+    }
+  }
+
+  async function applyDiscount() {
+    setSuccess(null);
+    setActionError(null);
+
+    if (!billQuery.data) {
+      setActionError("Carregue a conta antes de aplicar desconto.");
+      return;
+    }
+
+    if (parsedDiscountAmount < 0) {
+      setActionError("O desconto não pode ser negativo.");
+      return;
+    }
+
+    if (parsedDiscountAmount > maxDiscountAmount) {
+      setActionError(
+        `O desconto não pode ser maior que ${formatCurrency(maxDiscountAmount)}.`,
+      );
+      return;
+    }
+
+    try {
+      await apiPost<TableBillResponse>(`/cashier/tables/${id}/apply-discount`, {
+        discount_amount: parsedDiscountAmount,
+      });
+
+      setSuccess(
+        parsedDiscountAmount > 0
+          ? `Desconto de ${formatCurrency(parsedDiscountAmount)} aplicado.`
+          : "Desconto removido da conta.",
+      );
+      setDiscountAmount(null);
+      setAmountPaid(null);
+      await tableQuery.reload();
+      await billQuery.reload();
+    } catch (caught) {
+      setActionError(
+        caught instanceof Error ? caught.message : "Erro ao aplicar desconto.",
       );
     }
   }
@@ -457,10 +514,86 @@ export function CashierTableDetailPage() {
             </div>
           ) : null}
 
-          <button className="secondary-button" type="button" disabled>
-            <Percent size={18} />
-            Aplicar desconto
-          </button>
+          <div className="cashier-payment-form">
+            <div className="cashier-payment-header">
+              <div>
+                <span className="eyebrow">Desconto</span>
+                <strong>Aplicar desconto na conta</strong>
+              </div>
+              <span>{formatCurrency(currentDiscountAmount)}</span>
+            </div>
+
+            <label className="cashier-amount-field">
+              <span>Valor do desconto</span>
+              <div
+                className={
+                  isDiscountInvalid
+                    ? "cashier-amount-input has-error"
+                    : "cashier-amount-input"
+                }
+              >
+                <small>R$</small>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discountAmountValue}
+                  onChange={(event) => setDiscountAmount(event.target.value)}
+                  placeholder="0,00"
+                  disabled={!billQuery.data}
+                />
+              </div>
+            </label>
+
+            <div className="cashier-quick-amounts">
+              <button type="button" onClick={() => setDiscountAmount("0")}>
+                Remover
+              </button>
+              <button type="button" onClick={() => setDiscountAmount("5")}>
+                R$ 5
+              </button>
+              <button type="button" onClick={() => setDiscountAmount("10")}>
+                R$ 10
+              </button>
+              <button type="button" onClick={() => setDiscountAmount("20")}>
+                R$ 20
+              </button>
+            </div>
+
+            <div className="cashier-payment-summary">
+              <div>
+                <span>Subtotal + taxa</span>
+                <strong>{formatCurrency(maxDiscountAmount)}</strong>
+              </div>
+
+              <div>
+                <span>Desconto atual</span>
+                <strong>{formatCurrency(currentDiscountAmount)}</strong>
+              </div>
+
+              <div className="cashier-payment-summary__total">
+                <span>Novo desconto</span>
+                <strong>{formatCurrency(parsedDiscountAmount)}</strong>
+              </div>
+            </div>
+
+            {isDiscountInvalid ? (
+              <small className="cashier-payment-error">
+                O desconto não pode ser maior que{" "}
+                {formatCurrency(maxDiscountAmount)}.
+              </small>
+            ) : null}
+
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={!billQuery.data || isDiscountInvalid}
+              onClick={() => void applyDiscount()}
+            >
+              <Percent size={18} />
+              Aplicar desconto
+            </button>
+          </div>
 
           <button
             className="secondary-button no-print"
