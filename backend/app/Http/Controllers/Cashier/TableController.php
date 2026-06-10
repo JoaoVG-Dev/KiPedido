@@ -49,13 +49,23 @@ class TableController extends Controller
             ]);
         }
 
-        $session->update(['discount_amount' => $data['discount_amount']]);
+        $bill = $calculateTableBillAction->execute($table);
+        $maxDiscount = round((float) $bill['subtotal'] + (float) $bill['service_fee_amount'], 2);
+        $discountAmount = round((float) $data['discount_amount'], 2);
+
+        if ($discountAmount > $maxDiscount) {
+            throw ValidationException::withMessages([
+                'discount_amount' => 'O desconto não pode ser maior que o subtotal mais a taxa de serviço.',
+            ]);
+        }
+
+        $session->update(['discount_amount' => $discountAmount]);
 
         $logAction->execute('table.discount_applied', "Desconto aplicado na {$table->name}.", [
             'user' => $request->user(),
             'table' => $table,
             'table_session' => $session,
-            'discount_amount' => $data['discount_amount'],
+            'discount_amount' => $discountAmount,
         ]);
 
         return response()->json($calculateTableBillAction->execute($table));
