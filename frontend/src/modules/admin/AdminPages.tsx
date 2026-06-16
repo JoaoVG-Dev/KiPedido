@@ -83,7 +83,7 @@ export function AdminDashboard() {
           <div className="panel__header">
             <div>
               <span className="eyebrow">Salão</span>
-              <h2>Mesas do banco</h2>
+              <h2>Mapa resumido de mesas</h2>
             </div>
             <Link to="/admin/tables">Ver todas</Link>
           </div>
@@ -103,7 +103,13 @@ export function AdminDashboard() {
           ) : (
             <div className="task-list">
               {data.recent_logs.map((log) => (
-                <span key={log.id}><ShieldCheck size={18} /> {log.description}</span>
+                <article key={log.id}>
+                  <ShieldCheck size={18} />
+                  <span>
+                    <strong>{log.action}</strong>
+                    <small>{log.description}</small>
+                  </span>
+                </article>
               ))}
             </div>
           )}
@@ -170,6 +176,7 @@ export function AdminCategoriesPage() {
         category.description ?? 'Sem descrição',
         category.is_active ? 'Ativa' : 'Inativa',
       ])}
+      columns={['Categoria', 'Descrição', 'Status']}
     />
   )
 }
@@ -204,12 +211,15 @@ export function AdminProductsPage() {
               <span>{(product.category?.name ?? 'Produto').slice(0, 2).toUpperCase()}</span>
             </div>
             <div className="product-card__body">
-              <span>{product.category?.name ?? 'Sem categoria'}</span>
+              <div className="product-card__topline">
+                <span>{product.category?.name ?? 'Sem categoria'}</span>
+                <StatusBadge label={product.is_available ? 'Disponível' : 'Pausado'} tone={product.is_available ? 'success' : 'danger'} />
+              </div>
               <h2>{product.name}</h2>
               <p>{product.description ?? 'Sem descrição cadastrada.'}</p>
               <div className="product-card__footer">
                 <strong>{formatCurrency(product.price)}</strong>
-                <StatusBadge label={product.is_available ? 'Disponível' : 'Indisponível'} tone={product.is_available ? 'success' : 'danger'} />
+                <small>{product.is_available ? 'Visível no tablet' : 'Oculto no cardápio'}</small>
               </div>
             </div>
           </article>
@@ -238,6 +248,7 @@ export function AdminUsersPage() {
         user.email,
         `${user.role}${user.is_active ? '' : ' inativo'}`,
       ])}
+      columns={['Usuário', 'Email', 'Perfil']}
     />
   )
 }
@@ -272,7 +283,11 @@ export function AdminSettingsPage() {
           </label>
           <div className="toggle-row">
             <Settings size={20} />
-            <span>Configurações carregadas da API</span>
+            <span>
+              <strong>Configurações carregadas da API</strong>
+              <small>Fonte única para operação, caixa, cozinha e tablet.</small>
+            </span>
+            <StatusBadge label="Somente leitura" tone="info" />
           </div>
         </section>
       ) : null}
@@ -303,6 +318,7 @@ export function AdminReportsPage() {
         ['Produto mais vendido', products.data?.[0]?.product_name ?? 'Sem vendas', `${products.data?.[0]?.quantity_sold ?? 0} unidades`],
         ['Mesa mais usada', tables.data?.[0]?.table?.name ?? 'Sem sessões', `${tables.data?.[0]?.sessions_count ?? 0} sessões`],
       ]}
+      columns={['Indicador', 'Valor', 'Observação']}
     />
   )
 }
@@ -326,6 +342,7 @@ export function AdminLogsPage() {
         log.description,
         formatDateTime(log.created_at),
       ])}
+      columns={['Ação', 'Evento', 'Horário']}
     />
   )
 }
@@ -341,7 +358,7 @@ function TableRows({ tables }: { tables: ApiRestaurantTable[] }) {
         <article className={`table-row table-row--${table.status}`} key={table.id}>
           <div>
             <strong>{table.name}</strong>
-            <small>{table.active_session ? `Sessão ${table.active_session.status}` : 'Sem consumo aberto'}</small>
+            <small>{table.active_session ? adminSessionStatusLabel(table.active_session.status) : 'Sem consumo aberto'}</small>
           </div>
           <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
           <span>{formatCurrency(table.active_session?.total_amount)}</span>
@@ -382,13 +399,14 @@ type AdminListPageProps = {
   description: string
   action: string
   rows: string[][]
+  columns?: [string, string, string]
   isLoading: boolean
   error: Error | null
   emptyTitle: string
   icon?: typeof Plus
 }
 
-function AdminListPage({ title, eyebrow, description, action, rows, isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
+function AdminListPage({ title, eyebrow, description, action, rows, columns = ['Nome', 'Detalhe', 'Status'], isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
   return (
     <section className="page-stack admin-page">
       <PageHeader
@@ -410,15 +428,15 @@ function AdminListPage({ title, eyebrow, description, action, rows, isLoading, e
         {!isLoading && !error && rows.length > 0 ? (
           <div className="data-table data-table--three">
             <div className="data-table__head">
-              <span>Nome</span>
-              <span>Detalhe</span>
-              <span>Status</span>
+              <span>{columns[0]}</span>
+              <span>{columns[1]}</span>
+              <span>{columns[2]}</span>
             </div>
             {rows.map((row) => (
               <div className="data-table__row" key={row.join('-')}>
-                <strong data-label="Nome">{row[0]}</strong>
-                <span data-label="Detalhe">{row[1]}</span>
-                <span data-label="Status">{row[2]}</span>
+                <strong data-label={columns[0]}>{row[0]}</strong>
+                <span data-label={columns[1]}>{row[1]}</span>
+                <span data-label={columns[2]}>{row[2]}</span>
               </div>
             ))}
           </div>
@@ -426,4 +444,13 @@ function AdminListPage({ title, eyebrow, description, action, rows, isLoading, e
       </section>
     </section>
   )
+}
+
+function adminSessionStatusLabel(status: NonNullable<ApiRestaurantTable['active_session']>['status']) {
+  return {
+    open: 'Sessão aberta',
+    waiting_payment: 'Aguardando pagamento',
+    paid: 'Conta paga',
+    cancelled: 'Sessão cancelada',
+  }[status]
 }
