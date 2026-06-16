@@ -16,7 +16,7 @@ export function StateMessage({ title, description, tone = 'empty', action }: Sta
   const Icon = tone === 'success' ? CheckCircle2 : tone === 'loading' ? Loader2 : AlertCircle
 
   return (
-    <div className={`state-message state-message--${tone}`}>
+    <div className={`state-message state-message--${tone}`} role={tone === 'error' ? 'alert' : 'status'} aria-live="polite">
       <Icon size={22} className={tone === 'loading' ? 'state-message__spinner' : undefined} />
       <div>
         <strong>{title}</strong>
