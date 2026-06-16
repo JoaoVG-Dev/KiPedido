@@ -13,6 +13,8 @@ import {
   Utensils,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { clearAuthToken } from '../../services/auth'
 import type { NavItem } from '../../types'
 
 type AppArea = 'admin' | 'kitchen' | 'cashier'
@@ -46,6 +48,12 @@ const titleByArea: Record<AppArea, string> = {
 
 export function AppShell({ area }: { area: AppArea }) {
   const navItems = navByArea[area]
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    clearAuthToken()
+    navigate('/admin/login')
+  }
 
   return (
     <div className={`app-shell app-shell--${area}`}>
@@ -72,10 +80,10 @@ export function AppShell({ area }: { area: AppArea }) {
           ))}
         </nav>
 
-        <NavLink to="/admin/login" className="nav-link nav-link--muted">
+        <button className="nav-link nav-link--muted nav-link--button" type="button" onClick={handleLogout}>
           <LogOut size={18} />
           <span>Sair</span>
-        </NavLink>
+        </button>
       </aside>
 
       <main className="workspace">

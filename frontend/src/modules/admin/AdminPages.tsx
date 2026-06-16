@@ -1,25 +1,35 @@
 import {
-  Activity,
   BadgeDollarSign,
   Bell,
-  CheckCircle2,
   ClipboardList,
-  Clock3,
+  FileBarChart,
   Plus,
   RefreshCw,
   Search,
   Settings,
   ShieldCheck,
-  ToggleLeft,
+  Tags,
   UserRoundPlus,
   Utensils,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
 import { MetricCard } from '../../components/shared/MetricCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useApiQuery } from '../../hooks/useApiQuery'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { formatCurrency, products, tables } from '../../services/mockData'
-import type { TableStatus } from '../../types'
+import { apiGet } from '../../services/api'
+import { formatCurrency, formatDateTime } from '../../services/format'
+import type {
+  ApiActionLog,
+  ApiCategory,
+  ApiDashboard,
+  ApiProduct,
+  ApiRestaurantTable,
+  ApiUser,
+  PaginatedResponse,
+  TableStatus,
+} from '../../types'
 
 const tableStatusLabel: Record<TableStatus, string> = {
   available: 'Livre',
@@ -39,13 +49,18 @@ const tableStatusTone: Record<TableStatus, 'success' | 'warning' | 'danger' | 'i
 
 export function AdminDashboard() {
   usePageTitle('Admin')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<ApiDashboard>('/admin/dashboard'), [])
+
+  if (isLoading) return <StateMessage title="Carregando painel administrativo..." tone="loading" />
+  if (error) return <ApiStateMessage error={error} />
+  if (!data) return <StateMessage title="Nenhum dado administrativo disponível." />
 
   return (
     <section className="page-stack">
       <header className="page-header">
         <div>
           <span className="eyebrow">Operação em tempo real</span>
-          <h1>Visão geral do restaurante</h1>
+          <h1>{data.settings?.restaurant_name ?? 'KiPedido'}</h1>
         </div>
         <Link className="primary-button" to="/admin/products">
           <Plus size={18} />
@@ -54,41 +69,35 @@ export function AdminDashboard() {
       </header>
 
       <div className="metrics-grid">
-        <MetricCard icon={Utensils} label="Mesas abertas" value="3" detail="2 aguardando preparo" />
-        <MetricCard icon={ClipboardList} label="Pedidos hoje" value="42" detail="8 nos últimos 30 min" />
-        <MetricCard icon={BadgeDollarSign} label="Faturamento" value="R$ 4.820" detail="parcial do dia" />
-        <MetricCard icon={Bell} label="Chamados" value="2" detail="pendentes no salão" />
+        <MetricCard icon={Utensils} label="Mesas abertas" value={String(data.metrics.open_tables)} detail={`${data.metrics.available_tables} livres`} />
+        <MetricCard icon={ClipboardList} label="Pedidos hoje" value={String(data.metrics.today_orders)} detail={`${data.metrics.active_kitchen_orders} ativos na cozinha`} />
+        <MetricCard icon={BadgeDollarSign} label="Faturamento" value={formatCurrency(data.metrics.today_revenue)} detail="pagamentos do dia" />
+        <MetricCard icon={Bell} label="Chamados" value={String(data.metrics.pending_service_calls)} detail="pendentes no salão" />
       </div>
 
       <div className="content-grid">
         <section className="panel">
           <div className="panel__header">
-            <h2>Mesas em destaque</h2>
+            <h2>Mesas do banco</h2>
             <Link to="/admin/tables">Ver todas</Link>
           </div>
-          <div className="table-list">
-            {tables.slice(0, 4).map((table) => (
-              <article className="table-row" key={table.id}>
-                <div>
-                  <strong>{table.name}</strong>
-                  <small>{table.openedAt ? `Aberta às ${table.openedAt}` : 'Sem consumo aberto'}</small>
-                </div>
-                <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
-                <span>{formatCurrency(table.total)}</span>
-              </article>
-            ))}
-          </div>
+          <TableRows tables={data.tables} />
         </section>
 
         <section className="panel">
           <div className="panel__header">
-            <h2>Próximas ações</h2>
+            <h2>Logs recentes</h2>
+            <Link to="/admin/logs">Auditoria</Link>
           </div>
-          <div className="task-list">
-            <span><CheckCircle2 size={18} /> Validar disponibilidade do almoço</span>
-            <span><Clock3 size={18} /> Revisar pedidos prontos há mais de 10 min</span>
-            <span><Activity size={18} /> Acompanhar chamados de mesa</span>
-          </div>
+          {data.recent_logs.length === 0 ? (
+            <StateMessage title="Nenhum log registrado ainda." />
+          ) : (
+            <div className="task-list">
+              {data.recent_logs.map((log) => (
+                <span key={log.id}><ShieldCheck size={18} /> {log.description}</span>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </section>
@@ -97,6 +106,7 @@ export function AdminDashboard() {
 
 export function AdminTablesPage() {
   usePageTitle('Mesas')
+  const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiRestaurantTable>>('/admin/tables'), [])
 
   return (
     <section className="page-stack">
@@ -117,28 +127,15 @@ export function AdminTablesPage() {
             <Search size={18} />
             <input placeholder="Buscar mesa" />
           </label>
-          <button className="secondary-button" type="button">
+          <button className="secondary-button" type="button" onClick={() => void reload()}>
             <RefreshCw size={18} />
-            Regenerar tokens
+            Atualizar
           </button>
         </div>
 
-        <div className="data-table">
-          <div className="data-table__head">
-            <span>Mesa</span>
-            <span>Status</span>
-            <span>Consumo</span>
-            <span>Token</span>
-          </div>
-          {tables.map((table) => (
-            <div className="data-table__row" key={table.id}>
-              <strong>{table.name}</strong>
-              <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
-              <span>{formatCurrency(table.total)}</span>
-              <code>tablet-token-{table.number}</code>
-            </div>
-          ))}
-        </div>
+        {isLoading ? <StateMessage title="Carregando mesas..." tone="loading" /> : null}
+        {error ? <ApiStateMessage error={error} /> : null}
+        {!isLoading && !error ? <TableDataTable tables={data?.data ?? []} /> : null}
       </section>
     </section>
   )
@@ -146,24 +143,30 @@ export function AdminTablesPage() {
 
 export function AdminCategoriesPage() {
   usePageTitle('Categorias')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiCategory>>('/admin/categories'), [])
 
   return (
-    <AdminSimplePage
+    <AdminListPage
       title="Categorias"
       eyebrow="Cardápio"
       action="Nova categoria"
-      rows={[
-        ['Entradas', '2 produtos', 'Ativa'],
-        ['Pratos principais', '2 produtos', 'Ativa'],
-        ['Bebidas', '2 produtos', 'Ativa'],
-        ['Sobremesas', '2 produtos', 'Ativa'],
-      ]}
+      icon={Tags}
+      isLoading={isLoading}
+      error={error}
+      emptyTitle="Nenhuma categoria cadastrada."
+      rows={(data?.data ?? []).map((category) => [
+        category.name,
+        category.description ?? 'Sem descrição',
+        category.is_active ? 'Ativa' : 'Inativa',
+      ])}
     />
   )
 }
 
 export function AdminProductsPage() {
   usePageTitle('Produtos')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiProduct>>('/admin/products'), [])
+  const products = data?.data ?? []
 
   return (
     <section className="page-stack">
@@ -178,17 +181,21 @@ export function AdminProductsPage() {
         </button>
       </header>
 
+      {isLoading ? <StateMessage title="Carregando produtos..." tone="loading" /> : null}
+      {error ? <ApiStateMessage error={error} /> : null}
+      {!isLoading && !error && products.length === 0 ? <StateMessage title="Nenhum produto cadastrado." /> : null}
+
       <div className="product-grid">
         {products.map((product) => (
           <article className="product-card" key={product.id}>
-            <div className="product-card__media">{product.category.slice(0, 2).toUpperCase()}</div>
+            <div className="product-card__media">{(product.category?.name ?? 'Produto').slice(0, 2).toUpperCase()}</div>
             <div className="product-card__body">
-              <span>{product.category}</span>
+              <span>{product.category?.name ?? 'Sem categoria'}</span>
               <h2>{product.name}</h2>
-              <p>{product.description}</p>
+              <p>{product.description ?? 'Sem descrição cadastrada.'}</p>
               <div className="product-card__footer">
                 <strong>{formatCurrency(product.price)}</strong>
-                <StatusBadge label={product.isAvailable ? 'Disponível' : 'Indisponível'} tone={product.isAvailable ? 'success' : 'danger'} />
+                <StatusBadge label={product.is_available ? 'Disponível' : 'Indisponível'} tone={product.is_available ? 'success' : 'danger'} />
               </div>
             </div>
           </article>
@@ -200,24 +207,29 @@ export function AdminProductsPage() {
 
 export function AdminUsersPage() {
   usePageTitle('Usuários')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiUser>>('/admin/users'), [])
 
   return (
-    <AdminSimplePage
+    <AdminListPage
       title="Usuários internos"
       eyebrow="Permissões"
       action="Novo usuário"
       icon={UserRoundPlus}
-      rows={[
-        ['Administrador KiPedido', 'admin@kipedido.local', 'admin'],
-        ['Caixa principal', 'caixa@kipedido.local', 'cashier'],
-        ['Cozinha', 'cozinha@kipedido.local', 'kitchen'],
-      ]}
+      isLoading={isLoading}
+      error={error}
+      emptyTitle="Nenhum usuário cadastrado."
+      rows={(data?.data ?? []).map((user) => [
+        user.name,
+        user.email,
+        `${user.role}${user.is_active ? '' : ' inativo'}`,
+      ])}
     />
   )
 }
 
 export function AdminSettingsPage() {
   usePageTitle('Configurações')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<ApiDashboard['settings']>('/admin/settings'), [])
 
   return (
     <section className="page-stack">
@@ -228,43 +240,53 @@ export function AdminSettingsPage() {
         </div>
       </header>
 
-      <section className="settings-grid">
-        <label>
-          Nome do restaurante
-          <input defaultValue="KiPedido Restaurante" />
-        </label>
-        <label>
-          Taxa de serviço (%)
-          <input defaultValue="10" inputMode="decimal" />
-        </label>
-        <label>
-          Moeda
-          <input defaultValue="BRL" />
-        </label>
-        <div className="toggle-row">
-          <Settings size={20} />
-          <span>Alertas sonoros da cozinha</span>
-          <button className="icon-button" type="button" title="Alternar alertas">
-            <ToggleLeft size={24} />
-          </button>
-        </div>
-      </section>
+      {isLoading ? <StateMessage title="Carregando configurações..." tone="loading" /> : null}
+      {error ? <ApiStateMessage error={error} /> : null}
+      {data ? (
+        <section className="settings-grid">
+          <label>
+            Nome do restaurante
+            <input value={data.restaurant_name} readOnly />
+          </label>
+          <label>
+            Taxa de serviço (%)
+            <input value={String(data.service_fee_percentage)} readOnly />
+          </label>
+          <label>
+            Moeda
+            <input value={data.currency} readOnly />
+          </label>
+          <div className="toggle-row">
+            <Settings size={20} />
+            <span>Configurações carregadas da API</span>
+          </div>
+        </section>
+      ) : null}
     </section>
   )
 }
 
 export function AdminReportsPage() {
   usePageTitle('Relatórios')
+  const daily = useApiQuery(() => apiGet<{ net_total: number; payments_count: number }>('/admin/reports/daily-sales'), [])
+  const products = useApiQuery(() => apiGet<Array<{ product_name: string; quantity_sold: string; total_sold: string }>>('/admin/reports/products-ranking'), [])
+  const tables = useApiQuery(() => apiGet<Array<{ table?: ApiRestaurantTable; sessions_count: number; total_consumed: string }>>('/admin/reports/tables-usage'), [])
+  const isLoading = daily.isLoading || products.isLoading || tables.isLoading
+  const error = daily.error ?? products.error ?? tables.error
 
   return (
-    <AdminSimplePage
+    <AdminListPage
       title="Relatórios simples"
       eyebrow="Indicadores"
       action="Exportar"
+      icon={FileBarChart}
+      isLoading={isLoading}
+      error={error}
+      emptyTitle="Nenhum dado de relatório encontrado."
       rows={[
-        ['Vendas do dia', 'R$ 4.820,00', '42 pedidos'],
-        ['Produto mais vendido', 'Bolinho de queijo', '18 unidades'],
-        ['Mesa com maior consumo', 'Mesa 02', 'R$ 248,70'],
+        ['Vendas do dia', formatCurrency(daily.data?.net_total ?? 0), `${daily.data?.payments_count ?? 0} pagamentos`],
+        ['Produto mais vendido', products.data?.[0]?.product_name ?? 'Sem vendas', `${products.data?.[0]?.quantity_sold ?? 0} unidades`],
+        ['Mesa mais usada', tables.data?.[0]?.table?.name ?? 'Sem sessões', `${tables.data?.[0]?.sessions_count ?? 0} sessões`],
       ]}
     />
   )
@@ -272,31 +294,84 @@ export function AdminReportsPage() {
 
 export function AdminLogsPage() {
   usePageTitle('Logs')
+  const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiActionLog>>('/admin/logs'), [])
 
   return (
-    <AdminSimplePage
+    <AdminListPage
       title="Logs de ações"
       eyebrow="Auditoria"
       action="Filtrar"
       icon={ShieldCheck}
-      rows={[
-        ['order.created', 'Pedido KP240612391 criado', '12:39'],
-        ['order.status_changed', 'Pedido enviado para preparo', '12:41'],
-        ['table.bill_requested', 'Mesa 02 pediu a conta', '12:46'],
-      ]}
+      isLoading={isLoading}
+      error={error}
+      emptyTitle="Nenhum log registrado."
+      rows={(data?.data ?? []).map((log) => [
+        log.action,
+        log.description,
+        formatDateTime(log.created_at),
+      ])}
     />
   )
 }
 
-type SimplePageProps = {
+function TableRows({ tables }: { tables: ApiRestaurantTable[] }) {
+  if (tables.length === 0) {
+    return <StateMessage title="Nenhuma mesa cadastrada." />
+  }
+
+  return (
+    <div className="table-list">
+      {tables.map((table) => (
+        <article className="table-row" key={table.id}>
+          <div>
+            <strong>{table.name}</strong>
+            <small>{table.active_session ? `Sessão ${table.active_session.status}` : 'Sem consumo aberto'}</small>
+          </div>
+          <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
+          <span>{formatCurrency(table.active_session?.total_amount)}</span>
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function TableDataTable({ tables }: { tables: ApiRestaurantTable[] }) {
+  if (tables.length === 0) {
+    return <StateMessage title="Nenhuma mesa cadastrada." />
+  }
+
+  return (
+    <div className="data-table">
+      <div className="data-table__head">
+        <span>Mesa</span>
+        <span>Status</span>
+        <span>Consumo</span>
+        <span>Token</span>
+      </div>
+      {tables.map((table) => (
+        <div className="data-table__row" key={table.id}>
+          <strong>{table.name}</strong>
+          <StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} />
+          <span>{formatCurrency(table.active_session?.total_amount)}</span>
+          <code>{table.token}</code>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+type AdminListPageProps = {
   title: string
   eyebrow: string
   action: string
   rows: string[][]
+  isLoading: boolean
+  error: Error | null
+  emptyTitle: string
   icon?: typeof Plus
 }
 
-function AdminSimplePage({ title, eyebrow, action, rows, icon: Icon = Plus }: SimplePageProps) {
+function AdminListPage({ title, eyebrow, action, rows, isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
   return (
     <section className="page-stack">
       <header className="page-header">
@@ -311,20 +386,25 @@ function AdminSimplePage({ title, eyebrow, action, rows, icon: Icon = Plus }: Si
       </header>
 
       <section className="panel">
-        <div className="data-table data-table--three">
-          <div className="data-table__head">
-            <span>Nome</span>
-            <span>Detalhe</span>
-            <span>Status</span>
-          </div>
-          {rows.map((row) => (
-            <div className="data-table__row" key={row.join('-')}>
-              <strong>{row[0]}</strong>
-              <span>{row[1]}</span>
-              <span>{row[2]}</span>
+        {isLoading ? <StateMessage title={`Carregando ${title.toLowerCase()}...`} tone="loading" /> : null}
+        {error ? <ApiStateMessage error={error} /> : null}
+        {!isLoading && !error && rows.length === 0 ? <StateMessage title={emptyTitle} /> : null}
+        {!isLoading && !error && rows.length > 0 ? (
+          <div className="data-table data-table--three">
+            <div className="data-table__head">
+              <span>Nome</span>
+              <span>Detalhe</span>
+              <span>Status</span>
             </div>
-          ))}
-        </div>
+            {rows.map((row) => (
+              <div className="data-table__row" key={row.join('-')}>
+                <strong>{row[0]}</strong>
+                <span>{row[1]}</span>
+                <span>{row[2]}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
     </section>
   )

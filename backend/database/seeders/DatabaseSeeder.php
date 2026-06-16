@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -44,7 +43,7 @@ class DatabaseSeeder extends Seeder
                 ['number' => $number],
                 [
                     'name' => "Mesa {$number}",
-                    'token' => Str::lower(Str::random(32)),
+                    'token' => sprintf('mesa-%02d-teste', $number),
                     'status' => 'available',
                     'is_active' => true,
                 ],

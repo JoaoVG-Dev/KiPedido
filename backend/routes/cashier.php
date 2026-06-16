@@ -3,7 +3,7 @@
 use App\Http\Controllers\Cashier\TableController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->prefix('cashier')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin,manager,cashier'])->prefix('cashier')->group(function () {
     Route::get('tables', [TableController::class, 'index']);
     Route::get('tables/{table}/bill', [TableController::class, 'bill']);
     Route::post('tables/{table}/apply-discount', [TableController::class, 'applyDiscount']);
