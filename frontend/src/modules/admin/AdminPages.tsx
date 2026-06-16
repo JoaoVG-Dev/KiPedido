@@ -13,8 +13,9 @@ import {
   Utensils,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
 import { MetricCard } from '../../components/shared/MetricCard'
+import { PageHeader } from '../../components/shared/PageHeader'
+import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useApiQuery } from '../../hooks/useApiQuery'
 import { usePageTitle } from '../../hooks/usePageTitle'
@@ -28,6 +29,7 @@ import type {
   ApiRestaurantTable,
   ApiUser,
   PaginatedResponse,
+  StatusTone,
   TableStatus,
 } from '../../types'
 
@@ -39,7 +41,7 @@ const tableStatusLabel: Record<TableStatus, string> = {
   inactive: 'Inativa',
 }
 
-const tableStatusTone: Record<TableStatus, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+const tableStatusTone: Record<TableStatus, StatusTone> = {
   available: 'success',
   occupied: 'info',
   waiting_payment: 'warning',
@@ -56,38 +58,45 @@ export function AdminDashboard() {
   if (!data) return <StateMessage title="Nenhum dado administrativo disponível." />
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Operação em tempo real</span>
-          <h1>{data.settings?.restaurant_name ?? 'KiPedido'}</h1>
-        </div>
-        <Link className="primary-button" to="/admin/products">
-          <Plus size={18} />
-          Novo produto
-        </Link>
-      </header>
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Operação em tempo real"
+        title={data.settings?.restaurant_name ?? 'KiPedido'}
+        description="Visão rápida da operação, cardápio, salão e eventos importantes do restaurante."
+        actions={(
+          <Link className="primary-button" to="/admin/products">
+            <Plus size={18} />
+            Novo produto
+          </Link>
+        )}
+      />
 
       <div className="metrics-grid">
-        <MetricCard icon={Utensils} label="Mesas abertas" value={String(data.metrics.open_tables)} detail={`${data.metrics.available_tables} livres`} />
-        <MetricCard icon={ClipboardList} label="Pedidos hoje" value={String(data.metrics.today_orders)} detail={`${data.metrics.active_kitchen_orders} ativos na cozinha`} />
-        <MetricCard icon={BadgeDollarSign} label="Faturamento" value={formatCurrency(data.metrics.today_revenue)} detail="pagamentos do dia" />
-        <MetricCard icon={Bell} label="Chamados" value={String(data.metrics.pending_service_calls)} detail="pendentes no salão" />
+        <MetricCard icon={Utensils} label="Mesas abertas" value={String(data.metrics.open_tables)} detail={`${data.metrics.available_tables} livres`} tone="info" />
+        <MetricCard icon={ClipboardList} label="Pedidos hoje" value={String(data.metrics.today_orders)} detail={`${data.metrics.active_kitchen_orders} ativos na cozinha`} tone="warning" />
+        <MetricCard icon={BadgeDollarSign} label="Faturamento" value={formatCurrency(data.metrics.today_revenue)} detail="pagamentos do dia" tone="success" />
+        <MetricCard icon={Bell} label="Chamados" value={String(data.metrics.pending_service_calls)} detail="pendentes no salão" tone="danger" />
       </div>
 
       <div className="content-grid">
-        <section className="panel">
+        <section className="panel admin-summary-panel">
           <div className="panel__header">
-            <h2>Mesas do banco</h2>
+            <div>
+              <span className="eyebrow">Salão</span>
+              <h2>Mesas do banco</h2>
+            </div>
             <Link to="/admin/tables">Ver todas</Link>
           </div>
           <TableRows tables={data.tables} />
         </section>
 
-        <section className="panel">
+        <section className="panel admin-summary-panel">
           <div className="panel__header">
-            <h2>Logs recentes</h2>
-            <Link to="/admin/logs">Auditoria</Link>
+            <div>
+              <span className="eyebrow">Auditoria</span>
+              <h2>Logs recentes</h2>
+            </div>
+            <Link to="/admin/logs">Ver logs</Link>
           </div>
           {data.recent_logs.length === 0 ? (
             <StateMessage title="Nenhum log registrado ainda." />
@@ -109,17 +118,18 @@ export function AdminTablesPage() {
   const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiRestaurantTable>>('/admin/tables'), [])
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Administração</span>
-          <h1>Mesas</h1>
-        </div>
-        <button className="primary-button" type="button">
-          <Plus size={18} />
-          Nova mesa
-        </button>
-      </header>
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Administração"
+        title="Mesas"
+        description="Gerencie tokens, status e consumo atual de cada mesa."
+        actions={(
+          <button className="primary-button" type="button">
+            <Plus size={18} />
+            Nova mesa
+          </button>
+        )}
+      />
 
       <section className="panel">
         <div className="toolbar">
@@ -149,6 +159,7 @@ export function AdminCategoriesPage() {
     <AdminListPage
       title="Categorias"
       eyebrow="Cardápio"
+      description="Organize as seções que aparecem no cardápio digital da mesa."
       action="Nova categoria"
       icon={Tags}
       isLoading={isLoading}
@@ -169,17 +180,18 @@ export function AdminProductsPage() {
   const products = data?.data ?? []
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Cardápio</span>
-          <h1>Produtos</h1>
-        </div>
-        <button className="primary-button" type="button">
-          <Plus size={18} />
-          Novo produto
-        </button>
-      </header>
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Cardápio"
+        title="Produtos"
+        description="Itens vendidos no tablet, com preço, categoria e disponibilidade."
+        actions={(
+          <button className="primary-button" type="button">
+            <Plus size={18} />
+            Novo produto
+          </button>
+        )}
+      />
 
       {isLoading ? <StateMessage title="Carregando produtos..." tone="loading" /> : null}
       {error ? <ApiStateMessage error={error} /> : null}
@@ -188,7 +200,9 @@ export function AdminProductsPage() {
       <div className="product-grid">
         {products.map((product) => (
           <article className="product-card" key={product.id}>
-            <div className="product-card__media">{(product.category?.name ?? 'Produto').slice(0, 2).toUpperCase()}</div>
+            <div className="product-card__media">
+              <span>{(product.category?.name ?? 'Produto').slice(0, 2).toUpperCase()}</span>
+            </div>
             <div className="product-card__body">
               <span>{product.category?.name ?? 'Sem categoria'}</span>
               <h2>{product.name}</h2>
@@ -213,6 +227,7 @@ export function AdminUsersPage() {
     <AdminListPage
       title="Usuários internos"
       eyebrow="Permissões"
+      description="Contas operacionais para administração, caixa e cozinha."
       action="Novo usuário"
       icon={UserRoundPlus}
       isLoading={isLoading}
@@ -232,13 +247,12 @@ export function AdminSettingsPage() {
   const { data, error, isLoading } = useApiQuery(() => apiGet<ApiDashboard['settings']>('/admin/settings'), [])
 
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Restaurante</span>
-          <h1>Configurações</h1>
-        </div>
-      </header>
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Restaurante"
+        title="Configurações"
+        description="Parâmetros carregados da API para operação do restaurante."
+      />
 
       {isLoading ? <StateMessage title="Carregando configurações..." tone="loading" /> : null}
       {error ? <ApiStateMessage error={error} /> : null}
@@ -278,6 +292,7 @@ export function AdminReportsPage() {
     <AdminListPage
       title="Relatórios simples"
       eyebrow="Indicadores"
+      description="Resumo financeiro e operacional para conferência rápida."
       action="Exportar"
       icon={FileBarChart}
       isLoading={isLoading}
@@ -300,6 +315,7 @@ export function AdminLogsPage() {
     <AdminListPage
       title="Logs de ações"
       eyebrow="Auditoria"
+      description="Registro dos principais eventos operacionais do sistema."
       action="Filtrar"
       icon={ShieldCheck}
       isLoading={isLoading}
@@ -322,7 +338,7 @@ function TableRows({ tables }: { tables: ApiRestaurantTable[] }) {
   return (
     <div className="table-list">
       {tables.map((table) => (
-        <article className="table-row" key={table.id}>
+        <article className={`table-row table-row--${table.status}`} key={table.id}>
           <div>
             <strong>{table.name}</strong>
             <small>{table.active_session ? `Sessão ${table.active_session.status}` : 'Sem consumo aberto'}</small>
@@ -363,6 +379,7 @@ function TableDataTable({ tables }: { tables: ApiRestaurantTable[] }) {
 type AdminListPageProps = {
   title: string
   eyebrow: string
+  description: string
   action: string
   rows: string[][]
   isLoading: boolean
@@ -371,19 +388,20 @@ type AdminListPageProps = {
   icon?: typeof Plus
 }
 
-function AdminListPage({ title, eyebrow, action, rows, isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
+function AdminListPage({ title, eyebrow, description, action, rows, isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
   return (
-    <section className="page-stack">
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">{eyebrow}</span>
-          <h1>{title}</h1>
-        </div>
-        <button className="primary-button" type="button">
-          <Icon size={18} />
-          {action}
-        </button>
-      </header>
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow={eyebrow}
+        title={title}
+        description={description}
+        actions={(
+          <button className="primary-button" type="button">
+            <Icon size={18} />
+            {action}
+          </button>
+        )}
+      />
 
       <section className="panel">
         {isLoading ? <StateMessage title={`Carregando ${title.toLowerCase()}...`} tone="loading" /> : null}
