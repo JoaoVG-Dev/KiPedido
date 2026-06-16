@@ -58,6 +58,54 @@ function tableStatusTone(status: TableStatus) {
   return status === 'waiting_payment' ? 'warning' : status === 'occupied' ? 'info' : status === 'inactive' ? 'danger' : 'success'
 }
 
+const blockedOrderStatuses = ['waiting_payment', 'closed', 'inactive'] satisfies TableStatus[]
+
+function isOrderingBlocked(status?: TableStatus) {
+  return status ? (blockedOrderStatuses as readonly TableStatus[]).includes(status) : false
+}
+
+function orderingBlockedReason(status?: TableStatus) {
+  if (status === 'waiting_payment') return 'Conta solicitada'
+  if (status === 'closed') return 'Mesa fechada'
+  if (status === 'inactive') return 'Mesa inativa'
+  return undefined
+}
+
+function tableSessionCopy(status?: TableStatus, hasSession = false) {
+  if (status === 'waiting_payment') {
+    return {
+      title: 'Conta solicitada',
+      description: 'O caixa já foi avisado. Evite enviar novos pedidos enquanto a equipe finaliza o fechamento.',
+    }
+  }
+
+  if (status === 'occupied' || hasSession) {
+    return {
+      title: 'Consumo em andamento',
+      description: 'Acompanhe pedidos, revise sua conta e chame a equipe se precisar de apoio.',
+    }
+  }
+
+  if (status === 'closed') {
+    return {
+      title: 'Mesa fechada',
+      description: 'Esta mesa já foi encerrada. Chame a equipe para iniciar um novo atendimento.',
+    }
+  }
+
+  if (status === 'inactive') {
+    return {
+      title: 'Mesa indisponível',
+      description: 'Esta mesa não está liberada para pedidos no momento.',
+    }
+  }
+
+  return {
+    title: 'Pronto para pedir',
+    description: 'Abra o cardápio para iniciar seu pedido. A sessão será aberta automaticamente no primeiro envio.',
+  }
+}
+
 function cartKey(token: string) {
   return `kipedido.cart.${token}`
 }
@@ -137,6 +185,7 @@ export function TabletHomePage() {
   const { data, error, isLoading } = useApiQuery(() => apiGet<TabletSessionResponse>(`/tablet/${token}/session`, { auth: false }), [token])
   const [success, setSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const sessionCopy = tableSessionCopy(data?.table.status, Boolean(data?.session))
 
   async function callWaiter() {
     setActionError(null)
@@ -179,8 +228,8 @@ export function TabletHomePage() {
       <div className="tablet-session-card operational-card">
         <div>
           <span className="eyebrow">Sessão da mesa</span>
-          <h2>{data?.session ? 'Consumo aberto' : 'Pronto para pedir'}</h2>
-          <p>{data?.session ? 'Acompanhe pedidos, revise sua conta e solicite o fechamento por aqui.' : 'Abra o cardápio para iniciar seu pedido.'}</p>
+          <h2>{sessionCopy.title}</h2>
+          <p>{sessionCopy.description}</p>
         </div>
         {data?.table.status ? <StatusBadge label={tableStatusLabel[data.table.status]} tone={tableStatusTone(data.table.status)} /> : null}
       </div>
@@ -227,6 +276,7 @@ export function TabletMenuPage() {
   const visibleCategories = selectedCategory ? [selectedCategory] : categories
   const productsCount = categories.reduce((sum, category) => sum + (category.products?.length ?? 0), 0)
   const availableProductsCount = categories.reduce((sum, category) => sum + (category.products ?? []).filter((product) => product.is_available !== false).length, 0)
+  const blockedReason = orderingBlockedReason(data?.table.status)
 
   return (
     <section className="tablet-page tablet-menu-page">
@@ -251,6 +301,12 @@ export function TabletMenuPage() {
       {isLoading ? <StateMessage title="Carregando cardápio..." tone="loading" /> : null}
       {error ? <ApiStateMessage error={error} /> : null}
       {!isLoading && !error && productsCount === 0 ? <StateMessage title="Nenhum produto disponível no momento." /> : null}
+      {blockedReason ? (
+        <StateMessage
+          title="Novos pedidos pausados para esta mesa."
+          description="A conta já está em fechamento ou a mesa não está liberada para novos itens. Fale com a equipe se precisar adicionar algo."
+        />
+      ) : null}
 
       <div className="tablet-service-strip" aria-label="Resumo do cardápio">
         <article>
@@ -263,7 +319,7 @@ export function TabletMenuPage() {
         </article>
         <article>
           <span>Comanda</span>
-          <strong>{itemLabel(cart.count)}</strong>
+          <strong>{blockedReason ?? itemLabel(cart.count)}</strong>
         </article>
       </div>
 
@@ -282,7 +338,7 @@ export function TabletMenuPage() {
             </div>
             <div className="menu-grid">
               {(category.products ?? []).map((product) => (
-                <ProductCard category={category} product={product} onAdd={() => cart.add(product)} key={product.id} />
+                <ProductCard category={category} product={product} disabledReason={blockedReason} onAdd={() => cart.add(product)} key={product.id} />
               ))}
             </div>
           </section>
@@ -298,9 +354,11 @@ export function TabletCartPage() {
   usePageTitle('Carrinho')
   const token = useTabletToken()
   const cart = useCart(token)
+  const sessionQuery = useApiQuery(() => apiGet<TabletSessionResponse>(`/tablet/${token}/session`, { auth: false }), [token])
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const blockedReason = orderingBlockedReason(sessionQuery.data?.table.status)
 
   async function sendOrder() {
     setSuccess(null)
@@ -308,6 +366,11 @@ export function TabletCartPage() {
     setIsSending(true)
 
     try {
+      if (isOrderingBlocked(sessionQuery.data?.table.status)) {
+        setError('Esta mesa não aceita novos pedidos neste momento.')
+        return
+      }
+
       await apiPost<ApiOrder>(`/tablet/${token}/orders`, {
         items: cart.items.map((item) => ({
           product_id: item.product_id,
@@ -344,6 +407,12 @@ export function TabletCartPage() {
         />
       ) : null}
       {error ? <StateMessage title={error} tone="error" /> : null}
+      {blockedReason ? (
+        <StateMessage
+          title="Envio de pedidos pausado."
+          description="A conta já foi solicitada ou a mesa não está disponível para novos itens. Se precisar corrigir a comanda, chame a equipe."
+        />
+      ) : null}
 
       <section className="cart-panel cart-panel--sheet">
         {cart.items.length === 0 ? (
@@ -385,9 +454,9 @@ export function TabletCartPage() {
           <span>Total parcial</span>
           <strong>{formatCurrency(cart.total)}</strong>
         </div>
-        <button className="primary-button primary-button--wide send-order-button" type="button" disabled={cart.items.length === 0 || isSending} onClick={() => void sendOrder()}>
+        <button className="primary-button primary-button--wide send-order-button" type="button" disabled={cart.items.length === 0 || isSending || Boolean(blockedReason)} onClick={() => void sendOrder()}>
           <Send size={22} />
-          {isSending ? 'Enviando...' : 'Enviar pedido para a cozinha'}
+          {blockedReason ?? (isSending ? 'Enviando...' : 'Enviar pedido para a cozinha')}
         </button>
       </section>
     </section>
@@ -453,6 +522,7 @@ export function TabletBillPage() {
   const billOrders = data?.bill?.session.orders ?? []
   const billItemsCount = billOrders.reduce((sum, order) => sum + (order.items ?? []).reduce((itemSum, item) => itemSum + item.quantity, 0), 0)
   const isBillRequested = data?.table.status === 'waiting_payment' || success !== null
+  const billStatusCopy = tableSessionCopy(data?.table.status, Boolean(data?.session))
 
   return (
     <section className="tablet-page tablet-bill-page">
@@ -469,9 +539,21 @@ export function TabletBillPage() {
       {error ? <ApiStateMessage error={error} /> : null}
       {success ? <StateMessage title={success} description="O caixa foi avisado que a mesa deseja fechar." tone="success" /> : null}
       {actionError ? <StateMessage title={actionError} tone="error" /> : null}
+      {data?.table.status === 'waiting_payment' && !success ? (
+        <StateMessage
+          title="Conta já solicitada."
+          description="A equipe do caixa recebeu o aviso. Continue acompanhando a mesa enquanto o fechamento é preparado."
+        />
+      ) : null}
 
       <section className="bill-panel bill-panel--receipt">
-        {!isLoading && !error && !data?.bill ? <StateMessage title="A mesa ainda não possui consumo aberto." description="Envie um pedido para iniciar a sessão." action={{ to: `/tablet/${token}/cardapio`, label: 'Ver cardápio' }} /> : null}
+        {!isLoading && !error && !data?.bill ? (
+          <StateMessage
+            title={billStatusCopy.title}
+            description={billStatusCopy.description}
+            action={!isOrderingBlocked(data?.table.status) ? { to: `/tablet/${token}/cardapio`, label: 'Ver cardápio' } : undefined}
+          />
+        ) : null}
         {data?.bill ? (
           <>
             {billOrders.length > 0 ? (
