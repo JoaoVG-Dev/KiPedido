@@ -26,8 +26,8 @@ http://127.0.0.1:8000/api/health
 
 ```txt
 KiPedido/
-├── backend/
-└── frontend/
+|-- backend/
+`-- frontend/
 ```
 
 ## Como Instalar O Backend
@@ -96,15 +96,24 @@ API menu: http://127.0.0.1:8000/api/tablet/mesa-01-teste/menu
 
 A interface atual foi organizada para uso operacional em desktop, tablet e celular.
 
-- Tablet: header com mesa/status, categorias navegaveis, cards grandes de produto, carrinho com observacoes por item e resumo fixo quando houver itens.
-- Cozinha: quadro por status com cards grandes, observacoes em destaque e botoes de transicao de preparo.
-- Caixa: grade responsiva de mesas, total destacado, detalhe da conta e lista de pedidos/itens em cards.
-- Admin: sidebar em desktop, navegacao adaptada em telas pequenas e tabelas que viram cards no mobile.
+- Tablet: experiencia de cardapio digital premium, header com acoes rapidas, hero de mesa, categorias em chips, cards de produto fortes, carrinho com aspecto de bottom sheet e timeline de pedidos.
+- Cozinha: painel operacional escuro, colunas por status, cards de pedido com mesa e observacoes em destaque e botoes de transicao de preparo.
+- Caixa: grade visual de mesas, status fortes, recibo da conta, resumo financeiro e pedidos da sessao em cards.
+- Admin: sidebar mais marcante, headers profissionais, metricas com tons por contexto e tabelas responsivas com acabamento visual.
+
+## Identidade Visual
+
+A fase visual atual reposiciona o KiPedido como produto comercial para restaurante:
+
+- Paleta principal em laranja/coral com grafite operacional, off-white quente e cores funcionais para sucesso, alerta, erro e informacao.
+- Cards, botoes, badges, estados e metricas foram padronizados em `frontend/src/index.css`.
+- Componentes visuais reutilizaveis foram adicionados para tablet, cozinha e caixa sem substituir a integracao com a API real.
+- A prioridade visual e o uso em tablet de mesa, mas cozinha, caixa e admin tambem receberam acabamento de produto.
 
 Tamanhos recomendados para conferencia manual:
 
 ```txt
-360px, 390px, 430px, 768px, 1024px e 1280px+
+360px, 390px, 430px, 768px, 820px, 1024px, 1180px e 1280px+
 ```
 
 ## Rotas Principais Da API
