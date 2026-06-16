@@ -15,9 +15,14 @@ export function FloatingCartButton({ to, count, total }: FloatingCartButtonProps
 
   return (
     <Link className="floating-cart-summary" to={to}>
-      <span>{count} item{count === 1 ? '' : 's'} no carrinho</span>
-      <strong>{formatCurrency(total)}</strong>
-      <ShoppingCart size={22} />
+      <span className="floating-cart-summary__icon" aria-hidden="true">
+        <ShoppingCart size={22} />
+      </span>
+      <span className="floating-cart-summary__copy">
+        <strong>{count} item{count === 1 ? '' : 's'} no carrinho</strong>
+        <small>Revisar pedido</small>
+      </span>
+      <span className="floating-cart-summary__total">{formatCurrency(total)}</span>
     </Link>
   )
 }
