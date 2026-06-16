@@ -1,5 +1,5 @@
 import { BellRing, ClipboardList, Clock3, Minus, Plus, ReceiptText, Send, ShoppingCart, Utensils } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { MoneyValue } from '../../components/shared/MoneyValue'
 import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
@@ -365,11 +365,11 @@ export function TabletBillPage() {
     }
   }
 
-  const billRows = useMemo(() => data?.bill ? [
+  const billRows = data?.bill ? [
     ['Subtotal', data.bill.subtotal],
     ['Taxa de serviço', data.bill.service_fee_amount],
     ['Desconto', data.bill.discount_amount],
-  ] as const : [], [data?.bill])
+  ] as const : []
 
   return (
     <section className="tablet-page tablet-bill-page">

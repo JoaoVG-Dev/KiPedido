@@ -1,23 +1,8 @@
 import { Link } from 'react-router-dom'
 import { MoneyValue } from '../shared/MoneyValue'
 import { StatusBadge } from '../ui/StatusBadge'
-import type { ApiRestaurantTable, StatusTone, TableStatus } from '../../types'
-
-export const cashierTableStatusLabel: Record<TableStatus, string> = {
-  available: 'Livre',
-  occupied: 'Ocupada',
-  waiting_payment: 'Aguardando pagamento',
-  closed: 'Fechada',
-  inactive: 'Inativa',
-}
-
-export const cashierTableStatusTone: Record<TableStatus, StatusTone> = {
-  available: 'success',
-  occupied: 'info',
-  waiting_payment: 'warning',
-  closed: 'neutral',
-  inactive: 'danger',
-}
+import type { ApiRestaurantTable } from '../../types'
+import { cashierTableStatusLabel, cashierTableStatusTone } from './tableStatusMeta'
 
 type TableStatusCardProps = {
   table: ApiRestaurantTable
