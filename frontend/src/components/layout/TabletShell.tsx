@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useApiQuery } from '../../hooks/useApiQuery'
 import { apiGet, apiPost } from '../../services/api'
+import { InstallPrompt } from '../pwa/InstallPrompt'
 import type { ApiServiceCall, TabletSessionResponse, TableStatus } from '../../types'
 import { StatusBadge } from '../ui/StatusBadge'
 
@@ -54,6 +55,7 @@ export function TabletShell() {
           </div>
 
           <div className="tablet-header__actions" aria-label="Ações rápidas da mesa">
+            <InstallPrompt />
             <button className="tablet-quick-action" type="button" title="Chamar garçom" onClick={() => void callWaiter()}>
               <BellRing size={19} />
               <span>Garçom</span>

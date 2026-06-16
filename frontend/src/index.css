@@ -1358,7 +1358,29 @@ code {
   transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
-.tablet-quick-action:hover {
+.tablet-install-button {
+  display: inline-flex;
+  min-height: 42px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(249, 115, 22, 0.32);
+  border-radius: 999px;
+  padding: 9px 13px;
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.16), rgba(21, 128, 61, 0.08)),
+    rgba(255, 255, 255, 0.94);
+  color: var(--primary-dark);
+  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.12);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.tablet-quick-action:hover,
+.tablet-install-button:hover {
   border-color: rgba(249, 115, 22, 0.34);
   background: #ffffff;
   transform: translateY(-1px);
