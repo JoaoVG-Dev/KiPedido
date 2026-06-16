@@ -17,7 +17,9 @@ export function StateMessage({ title, description, tone = 'empty', action }: Sta
 
   return (
     <div className={`state-message state-message--${tone}`} role={tone === 'error' ? 'alert' : 'status'} aria-live="polite">
-      <Icon size={22} className={tone === 'loading' ? 'state-message__spinner' : undefined} />
+      <div className="state-message__icon" aria-hidden="true">
+        <Icon size={22} className={tone === 'loading' ? 'state-message__spinner' : undefined} />
+      </div>
       <div>
         <strong>{title}</strong>
         {description ? <span>{description}</span> : null}
