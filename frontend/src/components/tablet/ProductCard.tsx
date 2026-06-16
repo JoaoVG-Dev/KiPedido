@@ -1,4 +1,4 @@
-import { Plus, Sparkles } from 'lucide-react'
+import { CircleOff, Plus, Sparkles } from 'lucide-react'
 import { formatCurrency } from '../../services/format'
 import type { ApiCategory, ApiProduct } from '../../types'
 
@@ -19,10 +19,15 @@ export function ProductCard({ category, product, onAdd }: ProductCardProps) {
     <article className={isAvailable ? 'menu-item' : 'menu-item menu-item--disabled'}>
       <div className="menu-item__image">
         {imageUrl ? <img src={imageUrl} alt="" /> : <span>{initials}</span>}
-        <small><Sparkles size={14} /> {category.name}</small>
+        <small><Sparkles size={14} /> {isAvailable ? 'Destaque do cardápio' : 'Pausado hoje'}</small>
       </div>
       <div className="menu-item__content">
-        <span className="menu-item__badge">{category.name}</span>
+        <div className="menu-item__meta">
+          <span className="menu-item__badge">{category.name}</span>
+          <span className={isAvailable ? 'menu-item__availability' : 'menu-item__availability menu-item__availability--off'}>
+            {isAvailable ? 'Disponível' : 'Indisponível'}
+          </span>
+        </div>
         <div className="menu-item__copy">
           <h2>{product.name}</h2>
           <p>{product.description ?? 'Receita selecionada pelo restaurante.'}</p>
@@ -33,8 +38,8 @@ export function ProductCard({ category, product, onAdd }: ProductCardProps) {
             <strong>{formatCurrency(product.price)}</strong>
           </div>
           <button className="primary-button menu-add-button" type="button" disabled={!isAvailable} onClick={onAdd}>
-            <Plus size={22} />
-            {isAvailable ? 'Adicionar' : 'Indisponível'}
+            {isAvailable ? <Plus size={22} /> : <CircleOff size={22} />}
+            {isAvailable ? 'Adicionar' : 'Pausado'}
           </button>
         </div>
       </div>
