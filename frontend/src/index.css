@@ -1049,23 +1049,81 @@ code {
   font-size: 24px;
 }
 
+.kitchen-page .metrics-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .kitchen-board {
   grid-template-columns: repeat(3, minmax(280px, 1fr));
+}
+
+.kitchen-board--kanban {
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.kitchen-lane {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.kitchen-lane__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.kitchen-lane__header span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.kitchen-lane__header strong {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.kitchen-empty {
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-weight: 750;
+  text-align: center;
 }
 
 .kitchen-card {
   display: grid;
   gap: 16px;
-  padding: 18px;
+  padding: 16px;
 }
 
-.kitchen-card__header span,
-.kitchen-card__footer span {
+.kitchen-card__header span {
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 850;
 }
 
-.kitchen-card__items div {
+.kitchen-card__items {
+  display: grid;
+  gap: 8px;
+}
+
+.kitchen-card__items div,
+.kitchen-item {
   display: grid;
   gap: 4px;
   border-radius: 8px;
@@ -1073,21 +1131,24 @@ code {
   background: var(--surface-strong);
 }
 
-.kitchen-card__footer span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.kitchen-item--note {
+  border: 1px solid rgba(237, 138, 36, 0.36);
+  background: var(--accent-soft);
 }
 
-.kitchen-card select {
-  min-height: 40px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0 10px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-weight: 700;
+.kitchen-item small {
+  color: var(--warning);
+  font-weight: 800;
+}
+
+.kitchen-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.kitchen-actions .primary-button,
+.kitchen-actions .secondary-button {
+  min-height: 52px;
 }
 
 .action-row {
