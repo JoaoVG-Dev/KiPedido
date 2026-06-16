@@ -135,6 +135,18 @@ A fase visual atual reposiciona o KiPedido como produto comercial para restauran
 - Componentes visuais reutilizaveis foram adicionados para tablet, cozinha e caixa sem substituir a integracao com a API real.
 - A prioridade visual e o uso em tablet de mesa, mas cozinha, caixa e admin tambem receberam acabamento de produto.
 
+## Nota Da Fase Premium
+
+A fase premium atual consolidou o Tablet como experiencia principal e alinhou Cozinha, Caixa e Admin ao mesmo padrao visual, mantendo os fluxos operacionais existentes:
+
+- Tablet: cardapio, carrinho, pedidos, conta e acoes rapidas com foco em uso real na mesa.
+- Cozinha: board de producao com colunas por status, cards mais legiveis, horarios, observacoes, itens e acoes de preparo.
+- Caixa: mapa de mesas e tela de fechamento com leitura de PDV, recibo da conta, pedidos, totais e liberacao da mesa.
+- Admin: dashboard, tabelas, produtos, configuracoes, relatorios e logs com hierarquia visual mais profissional.
+- Sistema visual: tokens, cards, botoes, badges, inputs, tabelas e estados centralizados principalmente em `frontend/src/index.css`.
+
+Antes de publicar uma nova etapa visual, valide backend, lint, typecheck, build e uma passada responsiva nos principais tamanhos de uso.
+
 Tamanhos recomendados para conferencia manual:
 
 ```txt
