@@ -1,4 +1,4 @@
-import { BadgeDollarSign, CreditCard, Percent, ReceiptText, RefreshCw, Unlock, Utensils } from 'lucide-react'
+import { BadgeDollarSign, CreditCard, Percent, Printer, ReceiptText, RefreshCw, Unlock, Utensils } from 'lucide-react'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { BillSummaryCard } from '../../components/cashier/BillSummaryCard'
@@ -12,6 +12,7 @@ import { useApiQuery } from '../../hooks/useApiQuery'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { apiGet, apiPost } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../services/format'
+import { printArea } from '../../services/print'
 import type { ApiOrder, ApiPayment, ApiRestaurantTable, StatusTone, TableBillResponse } from '../../types'
 
 export function CashierDashboard() {
@@ -109,6 +110,7 @@ export function CashierTableDetailPage() {
   const billQuery = useApiQuery(() => apiGet<TableBillResponse>(`/cashier/tables/${id}/bill`), [id])
   const table = tableQuery.data?.find((item) => String(item.id) === id)
   const orders = billQuery.data?.session.orders ?? []
+  const printId = `cashier-table-${id}`
   const [success, setSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -144,7 +146,7 @@ export function CashierTableDetailPage() {
   }
 
   return (
-    <section className="page-stack cashier-page">
+    <section className="page-stack cashier-page printable-area" data-print-id={printId}>
       <PageHeader
         eyebrow="Fechamento"
         title={table?.name ?? `Mesa ${id}`}
@@ -160,12 +162,16 @@ export function CashierTableDetailPage() {
       <div className="cashier-detail-grid">
         <BillSummaryCard bill={billQuery.data} isLoading={billQuery.isLoading} error={billQuery.error} />
 
-        <section className="panel cashier-actions">
+        <section className="panel cashier-actions no-print">
           <span className="eyebrow">Ações do caixa</span>
           <h2>Finalizar atendimento</h2>
           <button className="secondary-button" type="button" disabled>
             <Percent size={18} />
             Aplicar desconto
+          </button>
+          <button className="secondary-button no-print" type="button" disabled={!billQuery.data} onClick={() => printArea(printId, 'cashier')}>
+            <Printer size={18} />
+            Imprimir recibo
           </button>
           <button className="primary-button" type="button" disabled={!billQuery.data} onClick={() => void closeTable()}>
             <ReceiptText size={18} />

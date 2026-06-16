@@ -1,6 +1,7 @@
-import { Check, Clock3, Flame, PackageCheck, ReceiptText, StickyNote, XCircle } from 'lucide-react'
+import { Check, Clock3, Flame, PackageCheck, Printer, ReceiptText, StickyNote, XCircle } from 'lucide-react'
 import { StatusBadge } from '../ui/StatusBadge'
 import { formatDateTime } from '../../services/format'
+import { printArea } from '../../services/print'
 import type { ApiOrder, StatusTone } from '../../types'
 
 const kitchenStatusLabel: Record<ApiOrder['status'], string> = {
@@ -27,9 +28,10 @@ type KitchenOrderCardProps = {
 
 export function KitchenOrderCard({ order, updating, onUpdate }: KitchenOrderCardProps) {
   const items = order.items ?? []
+  const printId = `kitchen-order-${order.id}`
 
   return (
-    <article className={`kitchen-card kitchen-card--${order.status}`}>
+    <article className={`kitchen-card kitchen-card--${order.status} printable-area`} data-print-id={printId}>
       <div className="kitchen-card__header">
         <div>
           <span className="kitchen-card__code">{order.code}</span>
@@ -52,7 +54,12 @@ export function KitchenOrderCard({ order, updating, onUpdate }: KitchenOrderCard
         ))}
       </div>
 
-      <div className="kitchen-actions">
+      <div className="kitchen-actions no-print">
+        <button className="secondary-button" type="button" onClick={() => printArea(printId, 'kitchen')}>
+          <Printer size={18} />
+          Imprimir comanda
+        </button>
+
         {order.status === 'received' ? (
           <>
             <button className="primary-button" type="button" disabled={updating} onClick={() => void onUpdate(order, 'preparing')}>
