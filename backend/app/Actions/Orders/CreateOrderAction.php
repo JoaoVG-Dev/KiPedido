@@ -26,9 +26,21 @@ class CreateOrderAction
         }
 
         return DB::transaction(function () use ($table, $data): Order {
+            $blockedSession = TableSession::query()
+                ->where('table_id', $table->id)
+                ->where('status', 'waiting_payment')
+                ->latest()
+                ->first();
+
+            if ($blockedSession) {
+                throw ValidationException::withMessages([
+                    'table_session' => 'A conta desta mesa já foi solicitada. Não é possível enviar novos pedidos até o caixa finalizar ou reabrir a mesa.',
+                ]);
+            }
+
             $session = TableSession::query()
                 ->where('table_id', $table->id)
-                ->whereIn('status', ['open', 'waiting_payment'])
+                ->where('status', 'open')
                 ->latest()
                 ->first();
 
