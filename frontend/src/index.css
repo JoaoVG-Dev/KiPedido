@@ -802,6 +802,10 @@ code {
   color: var(--text);
 }
 
+.search-box input {
+  min-height: 44px;
+}
+
 .data-table {
   display: grid;
   gap: 9px;
