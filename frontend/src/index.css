@@ -949,6 +949,12 @@ code {
   font-weight: 750;
 }
 
+.admin-ops-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .admin-summary-panel {
   position: relative;
   overflow: hidden;
@@ -1020,6 +1026,17 @@ code {
   font-weight: 850;
 }
 
+.product-card__actions {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.product-card__actions .secondary-button {
+  min-height: 42px;
+  width: 100%;
+}
+
 .admin-page .data-table__row {
   min-height: 64px;
   background:
@@ -1051,6 +1068,11 @@ code {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.settings-form {
+  display: grid;
+  gap: 14px;
 }
 
 .settings-grid label,
@@ -1101,6 +1123,12 @@ code {
   box-shadow: 0 8px 18px rgba(31, 41, 51, 0.04);
 }
 
+.toggle-row input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--primary);
+}
+
 .toggle-row > span {
   display: grid;
   min-width: 0;
@@ -1116,6 +1144,11 @@ code {
   color: var(--muted);
   font-size: 12px;
   font-weight: 760;
+}
+
+.settings-form__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .login-page {
@@ -2875,6 +2908,7 @@ code {
   }
 
   .metrics-grid,
+  .admin-ops-strip,
   .product-grid,
   .menu-grid,
   .kitchen-board,
@@ -2931,6 +2965,7 @@ code {
   }
 
   .metrics-grid,
+  .admin-ops-strip,
   .product-grid,
   .kitchen-board,
   .cashier-grid,

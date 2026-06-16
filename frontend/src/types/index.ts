@@ -158,11 +158,7 @@ export type ApiActionLog = {
 }
 
 export type ApiDashboard = {
-  settings?: {
-    restaurant_name: string
-    service_fee_percentage: string | number
-    currency: string
-  } | null
+  settings?: ApiRestaurantSettings | null
   metrics: {
     open_tables: number
     available_tables: number
@@ -175,6 +171,15 @@ export type ApiDashboard = {
   }
   tables: ApiRestaurantTable[]
   recent_logs: ApiActionLog[]
+}
+
+export type ApiRestaurantSettings = {
+  restaurant_name: string
+  logo_path?: string | null
+  service_fee_percentage: string | number
+  currency: string
+  printer_enabled: boolean
+  sound_alerts_enabled: boolean
 }
 
 export type TabletMenuResponse = {
