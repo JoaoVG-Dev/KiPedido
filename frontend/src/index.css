@@ -119,6 +119,7 @@ code {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
+  min-width: 0;
 }
 
 .sidebar {
@@ -132,6 +133,7 @@ code {
   border-right: 1px solid var(--line);
   background: #242b2f;
   color: #ffffff;
+  min-width: 0;
 }
 
 .brand {
@@ -170,6 +172,7 @@ code {
 .sidebar__nav {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .nav-link {
@@ -1072,6 +1075,7 @@ code {
 }
 
 .kitchen-board {
+  min-width: 0;
   grid-template-columns: repeat(3, minmax(280px, 1fr));
 }
 
@@ -1127,6 +1131,7 @@ code {
 .kitchen-card {
   display: grid;
   gap: 16px;
+  min-width: 0;
   padding: 16px;
 }
 
@@ -1410,6 +1415,7 @@ code {
 
   .sidebar__nav {
     display: flex;
+    max-width: 100%;
     overflow-x: auto;
     padding-bottom: 4px;
     scroll-snap-type: x proximity;
@@ -1418,6 +1424,19 @@ code {
   .nav-link {
     min-width: max-content;
     scroll-snap-align: start;
+  }
+
+  .kitchen-board--kanban {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kitchen-card__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kitchen-lane {
+    min-width: 0;
   }
 
   .data-table {
