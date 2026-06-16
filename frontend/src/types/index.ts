@@ -67,6 +67,7 @@ export type ApiTableSession = {
   discount_amount: string | number
   service_fee_amount: string | number
   total_amount: string | number
+  orders?: ApiOrder[]
 }
 
 export type ApiRestaurantTable = {
