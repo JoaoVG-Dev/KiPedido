@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\RestaurantTable;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CloseTableSessionAction
 {
@@ -22,8 +23,16 @@ class CloseTableSessionAction
         return DB::transaction(function () use ($table, $data, $user): Payment {
             $bill = $this->calculateTableBillAction->execute($table);
             $session = $bill['session'];
-            $amountPaid = (float) ($data['amount_paid'] ?? $bill['total_amount']);
-            $change = max(round($amountPaid - $bill['total_amount'], 2), 0);
+            $totalAmount = round((float) $bill['total_amount'], 2);
+            $amountPaid = round((float) ($data['amount_paid'] ?? $totalAmount), 2);
+
+            if ($amountPaid < $totalAmount) {
+                throw ValidationException::withMessages([
+                    'amount_paid' => 'O valor pago não pode ser menor que o total da conta.',
+                ]);
+            }
+
+            $change = max(round($amountPaid - $totalAmount, 2), 0);
 
             $payment = Payment::create([
                 'table_session_id' => $session->id,
@@ -31,7 +40,7 @@ class CloseTableSessionAction
                 'subtotal' => $bill['subtotal'],
                 'discount_amount' => $bill['discount_amount'],
                 'service_fee_amount' => $bill['service_fee_amount'],
-                'total_amount' => $bill['total_amount'],
+                'total_amount' => $totalAmount,
                 'amount_paid' => $amountPaid,
                 'change_amount' => $change,
                 'status' => 'paid',
@@ -52,7 +61,7 @@ class CloseTableSessionAction
                 'table' => $table,
                 'table_session' => $session,
                 'payment_id' => $payment->id,
-                'total_amount' => $bill['total_amount'],
+                'total_amount' => $totalAmount,
             ]);
 
             $this->logAction->execute('table.closed', "Conta da {$table->name} fechada.", [
