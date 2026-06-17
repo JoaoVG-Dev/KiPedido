@@ -41,11 +41,23 @@ class CalculateTableBillAction
             'total_amount' => $total,
         ]);
 
+        $payments = $session->payments()
+            ->where('status', 'paid')
+            ->latest('paid_at')
+            ->get();
+
+        $paidAmount = round((float) $payments->sum('amount_paid'), 2);
+        $remainingAmount = max(round($total - $paidAmount, 2), 0);
+        $changeAmount = max(round($paidAmount - $total, 2), 0);
+
         $session->refresh()->load([
             'orders' => fn ($query) => $query
                 ->where('status', '!=', 'cancelled')
                 ->with('items')
                 ->latest('sent_at'),
+            'payments' => fn ($query) => $query
+                ->where('status', 'paid')
+                ->latest('paid_at'),
         ]);
 
         return [
@@ -55,6 +67,9 @@ class CalculateTableBillAction
             'service_fee_percentage' => $serviceFeePercentage,
             'service_fee_amount' => $serviceFee,
             'total_amount' => $total,
+            'paid_amount' => $paidAmount,
+            'remaining_amount' => $remainingAmount,
+            'change_amount' => $changeAmount,
         ];
     }
 }
