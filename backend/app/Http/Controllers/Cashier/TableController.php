@@ -49,6 +49,12 @@ class TableController extends Controller
             ]);
         }
 
+        if ($session->payments()->where('status', 'paid')->exists()) {
+            throw ValidationException::withMessages([
+                'discount_amount' => 'Não é possível alterar o desconto depois que um pagamento já foi registrado.',
+            ]);
+        }
+
         $bill = $calculateTableBillAction->execute($table);
         $maxDiscount = round((float) $bill['subtotal'] + (float) $bill['service_fee_amount'], 2);
         $discountAmount = round((float) $data['discount_amount'], 2);

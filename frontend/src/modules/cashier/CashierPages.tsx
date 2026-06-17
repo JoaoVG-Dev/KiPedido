@@ -196,6 +196,7 @@ export function CashierTableDetailPage() {
   const table = tableQuery.data?.find((item) => String(item.id) === id);
   const orders = billQuery.data?.session.orders ?? [];
   const registeredPayments = billQuery.data?.session.payments ?? [];
+  const hasRegisteredPayments = registeredPayments.length > 0;
   const printId = `cashier-table-${id}`;
 
   const [success, setSuccess] = useState<string | null>(null);
@@ -287,6 +288,13 @@ export function CashierTableDetailPage() {
 
     if (!billQuery.data) {
       setActionError("Carregue a conta antes de aplicar desconto.");
+      return;
+    }
+
+    if (hasRegisteredPayments) {
+      setActionError(
+        "Não é possível alterar o desconto depois que um pagamento já foi registrado.",
+      );
       return;
     }
 
@@ -540,22 +548,38 @@ export function CashierTableDetailPage() {
                   value={discountAmountValue}
                   onChange={(event) => setDiscountAmount(event.target.value)}
                   placeholder="0,00"
-                  disabled={!billQuery.data}
+                  disabled={!billQuery.data || hasRegisteredPayments}
                 />
               </div>
             </label>
 
             <div className="cashier-quick-amounts">
-              <button type="button" onClick={() => setDiscountAmount("0")}>
+              <button
+                type="button"
+                disabled={!billQuery.data || hasRegisteredPayments}
+                onClick={() => setDiscountAmount("0")}
+              >
                 Remover
               </button>
-              <button type="button" onClick={() => setDiscountAmount("5")}>
+              <button
+                type="button"
+                disabled={!billQuery.data || hasRegisteredPayments}
+                onClick={() => setDiscountAmount("5")}
+              >
                 R$ 5
               </button>
-              <button type="button" onClick={() => setDiscountAmount("10")}>
+              <button
+                type="button"
+                disabled={!billQuery.data || hasRegisteredPayments}
+                onClick={() => setDiscountAmount("10")}
+              >
                 R$ 10
               </button>
-              <button type="button" onClick={() => setDiscountAmount("20")}>
+              <button
+                type="button"
+                disabled={!billQuery.data || hasRegisteredPayments}
+                onClick={() => setDiscountAmount("20")}
+              >
                 R$ 20
               </button>
             </div>
@@ -584,10 +608,16 @@ export function CashierTableDetailPage() {
               </small>
             ) : null}
 
+            {hasRegisteredPayments ? (
+              <small className="cashier-payment-error">
+                Desconto só pode ser alterado antes do primeiro pagamento.
+              </small>
+            ) : null}
+
             <button
               className="secondary-button"
               type="button"
-              disabled={!billQuery.data || isDiscountInvalid}
+              disabled={!billQuery.data || isDiscountInvalid || hasRegisteredPayments}
               onClick={() => void applyDiscount()}
             >
               <Percent size={18} />
