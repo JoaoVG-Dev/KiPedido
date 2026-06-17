@@ -16,6 +16,19 @@ class ReportController extends Controller
             ->where('status', 'paid')
             ->whereDate('paid_at', today())
             ->get();
+        $paymentsByMethod = Payment::query()
+            ->select(
+                'payment_method',
+                DB::raw('COUNT(*) as payments_count'),
+                DB::raw('SUM(total_amount) as total_amount'),
+                DB::raw('SUM(amount_paid) as amount_paid'),
+                DB::raw('SUM(change_amount) as change_amount'),
+            )
+            ->where('status', 'paid')
+            ->whereDate('paid_at', today())
+            ->groupBy('payment_method')
+            ->orderBy('payment_method')
+            ->get();
 
         return response()->json([
             'date' => today()->toDateString(),
@@ -24,6 +37,9 @@ class ReportController extends Controller
             'discount_total' => $payments->sum('discount_amount'),
             'service_fee_total' => $payments->sum('service_fee_amount'),
             'net_total' => $payments->sum('total_amount'),
+            'amount_paid_total' => $payments->sum('amount_paid'),
+            'change_total' => $payments->sum('change_amount'),
+            'payments_by_method' => $paymentsByMethod,
         ]);
     }
 

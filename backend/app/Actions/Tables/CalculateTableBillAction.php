@@ -52,9 +52,9 @@ class CalculateTableBillAction
             ->latest('paid_at')
             ->get();
 
-        $paidAmount = round((float) $payments->sum('amount_paid'), 2);
+        $paidAmount = round((float) $payments->sum('total_amount'), 2);
         $remainingAmount = max(round($total - $paidAmount, 2), 0);
-        $changeAmount = max(round($paidAmount - $total, 2), 0);
+        $changeAmount = round((float) $payments->sum('change_amount'), 2);
 
         $session->refresh()->load([
             'orders' => fn ($query) => $query

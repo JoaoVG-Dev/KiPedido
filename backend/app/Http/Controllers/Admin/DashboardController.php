@@ -16,11 +16,6 @@ class DashboardController extends Controller
 {
     public function __invoke()
     {
-        $todayPayments = Payment::query()
-            ->where('status', 'paid')
-            ->whereDate('paid_at', today())
-            ->get();
-
         return response()->json([
             'settings' => RestaurantSetting::query()->first(),
             'metrics' => [
@@ -29,7 +24,10 @@ class DashboardController extends Controller
                 'today_orders' => Order::query()->whereDate('created_at', today())->count(),
                 'active_kitchen_orders' => Order::query()->whereIn('status', ['received', 'preparing', 'ready'])->count(),
                 'pending_service_calls' => ServiceCall::query()->where('status', 'pending')->count(),
-                'today_revenue' => (float) $todayPayments->sum('total_amount'),
+                'today_revenue' => (float) Payment::query()
+                    ->where('status', 'paid')
+                    ->whereDate('paid_at', today())
+                    ->sum('total_amount'),
                 'categories_count' => Category::query()->where('is_active', true)->count(),
                 'products_count' => Product::query()->where('is_active', true)->count(),
             ],
