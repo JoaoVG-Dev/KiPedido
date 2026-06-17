@@ -11,6 +11,7 @@ use App\Models\RestaurantSetting;
 use App\Models\RestaurantTable;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -135,6 +136,67 @@ class PaymentRevenueTest extends TestCase
             'net_total' => 120.0,
             'amount_paid_total' => 150.0,
             'change_total' => 30.0,
+        ]);
+    }
+
+    public function test_zero_or_negative_payment_amounts_are_rejected(): void
+    {
+        [$user, $table] = $this->createOpenTable(price: 120);
+        $closeTableSessionAction = app(CloseTableSessionAction::class);
+
+        foreach ([0, -10] as $amountPaid) {
+            try {
+                $closeTableSessionAction->execute($table->fresh(), [
+                    'payment_method' => 'pix',
+                    'amount_paid' => $amountPaid,
+                ], $user);
+
+                $this->fail("Payment amount [{$amountPaid}] should have been rejected.");
+            } catch (ValidationException $exception) {
+                $this->assertSame(
+                    'Informe um valor pago maior que zero.',
+                    $exception->errors()['amount_paid'][0],
+                );
+            }
+        }
+
+        $bill = app(CalculateTableBillAction::class)->execute($table->fresh());
+
+        $this->assertSame(0.0, (float) $bill['paid_amount']);
+        $this->assertSame(120.0, (float) $bill['remaining_amount']);
+    }
+
+    public function test_cent_rounding_keeps_split_payment_revenue_exact(): void
+    {
+        [$user, $table] = $this->createOpenTable(price: 100.01);
+        $closeTableSessionAction = app(CloseTableSessionAction::class);
+
+        $closeTableSessionAction->execute($table->fresh(), [
+            'payment_method' => 'pix',
+            'amount_paid' => 33.34,
+        ], $user);
+        $closeTableSessionAction->execute($table->fresh(), [
+            'payment_method' => 'credit_card',
+            'amount_paid' => 33.33,
+        ], $user);
+        $closeTableSessionAction->execute($table->fresh(), [
+            'payment_method' => 'debit_card',
+            'amount_paid' => 33.34,
+        ], $user);
+
+        $bill = app(CalculateTableBillAction::class)->execute($table->fresh());
+
+        $this->assertSame(100.01, (float) $bill['paid_amount']);
+        $this->assertSame(0.0, (float) $bill['remaining_amount']);
+        $this->assertDashboardRevenue($user, 100.01);
+        $this->assertDailySalesTotals($user, [
+            'payments_count' => 3,
+            'gross_total' => 100.01,
+            'discount_total' => 0.0,
+            'service_fee_total' => 0.0,
+            'net_total' => 100.01,
+            'amount_paid_total' => 100.01,
+            'change_total' => 0.0,
         ]);
     }
 
