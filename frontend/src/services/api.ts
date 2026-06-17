@@ -5,6 +5,11 @@ type RequestOptions = RequestInit & {
   auth?: boolean
 }
 
+type ApiErrorPayload = {
+  message?: string
+  errors?: Record<string, string[]>
+}
+
 export class ApiError extends Error {
   status: number
   details?: unknown
@@ -15,6 +20,14 @@ export class ApiError extends Error {
     this.status = status
     this.details = details
   }
+}
+
+function getApiErrorMessage(payload: ApiErrorPayload | null, status: number, path: string) {
+  const firstValidationError = payload?.errors
+    ? Object.values(payload.errors).flat().find(Boolean)
+    : null
+
+  return firstValidationError ?? payload?.message ?? `Erro ${status} ao chamar ${path}`
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -39,7 +52,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const payload = text ? JSON.parse(text) : null
 
   if (!response.ok) {
-    const message = payload?.message ?? `Erro ${response.status} ao chamar ${path}`
+    const message = getApiErrorMessage(payload, response.status, path)
     throw new ApiError(message, response.status, payload?.errors ?? payload)
   }
 
