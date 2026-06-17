@@ -2,11 +2,14 @@ import {
   BadgeDollarSign,
   Bell,
   ClipboardList,
+  Copy,
   Download,
   KeyRound,
   PackageCheck,
   Pencil,
   Plus,
+  Printer,
+  QrCode,
   RefreshCw,
   Save,
   Search,
@@ -18,7 +21,8 @@ import {
   Utensils,
   X,
 } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import QRCode from 'qrcode'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { MetricCard } from '../../components/shared/MetricCard'
 import { PageHeader } from '../../components/shared/PageHeader'
@@ -167,6 +171,7 @@ export function AdminTablesPage() {
   const [search, setSearch] = useState('')
   const [editingTable, setEditingTable] = useState<ApiRestaurantTable | null>(null)
   const [tableForm, setTableForm] = useState<TableFormState | null>(null)
+  const [qrTable, setQrTable] = useState<ApiRestaurantTable | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -258,11 +263,28 @@ export function AdminTablesPage() {
     setActionError(null)
 
     try {
-      await apiPost<ApiRestaurantTable>(`/admin/tables/${table.id}/regenerate-token`)
+      const updatedTable = await apiPost<ApiRestaurantTable>(`/admin/tables/${table.id}/regenerate-token`)
       setSuccess(`Token da ${table.name} regenerado.`)
+      setQrTable((current) => current?.id === table.id ? updatedTable : current)
       await reload()
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Não foi possível regenerar o token.')
+    }
+  }
+
+  async function revokeTableToken(table: ApiRestaurantTable) {
+    if (!window.confirm(`Revogar token da ${table.name}? O QR code atual deixará de funcionar.`)) return
+
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      const updatedTable = await apiPost<ApiRestaurantTable>(`/admin/tables/${table.id}/revoke-token`)
+      setSuccess(`Token da ${table.name} revogado.`)
+      setQrTable((current) => current?.id === table.id ? updatedTable : current)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Não foi possível revogar o token.')
     }
   }
 
@@ -303,7 +325,9 @@ export function AdminTablesPage() {
             tables={filteredTables}
             onEdit={openEditTableForm}
             onDelete={(table) => void deleteTable(table)}
+            onShowQr={setQrTable}
             onRegenerateToken={(table) => void regenerateTableToken(table)}
+            onRevokeToken={(table) => void revokeTableToken(table)}
           />
         ) : null}
       </section>
@@ -344,6 +368,15 @@ export function AdminTablesPage() {
             </div>
           </form>
         </AdminModal>
+      ) : null}
+
+      {qrTable ? (
+        <TableQrModal
+          table={qrTable}
+          onClose={() => setQrTable(null)}
+          onRegenerate={() => void regenerateTableToken(qrTable)}
+          onRevoke={() => void revokeTableToken(qrTable)}
+        />
       ) : null}
     </section>
   )
@@ -1168,10 +1201,12 @@ type TableDataTableProps = {
   tables: ApiRestaurantTable[]
   onEdit: (table: ApiRestaurantTable) => void
   onDelete: (table: ApiRestaurantTable) => void
+  onShowQr: (table: ApiRestaurantTable) => void
   onRegenerateToken: (table: ApiRestaurantTable) => void
+  onRevokeToken: (table: ApiRestaurantTable) => void
 }
 
-function TableDataTable({ tables, onEdit, onDelete, onRegenerateToken }: TableDataTableProps) {
+function TableDataTable({ tables, onEdit, onDelete, onShowQr, onRegenerateToken, onRevokeToken }: TableDataTableProps) {
   if (tables.length === 0) {
     return <StateMessage title="Nenhuma mesa cadastrada." />
   }
@@ -1190,14 +1225,24 @@ function TableDataTable({ tables, onEdit, onDelete, onRegenerateToken }: TableDa
           <strong data-label="Mesa">{table.name}</strong>
           <span data-label="Status"><StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} /></span>
           <span data-label="Consumo">{formatCurrency(table.active_session?.total_amount)}</span>
-          <code data-label="Token">{table.token}</code>
+          <code data-label="Token">{table.token_revoked_at ? 'Revogado' : table.token}</code>
           <RowActions
             onEdit={() => onEdit(table)}
             onDelete={() => onDelete(table)}
             extraActions={(
-              <button className="icon-button" type="button" title="Regenerar token" onClick={() => onRegenerateToken(table)}>
-                <KeyRound size={17} />
-              </button>
+              <>
+                <button className="icon-button" type="button" title="Ver QR code" onClick={() => onShowQr(table)}>
+                  <QrCode size={17} />
+                </button>
+                <button className="icon-button" type="button" title="Regenerar token" onClick={() => onRegenerateToken(table)}>
+                  <KeyRound size={17} />
+                </button>
+                {!table.token_revoked_at ? (
+                  <button className="icon-button icon-button--danger" type="button" title="Revogar token" onClick={() => onRevokeToken(table)}>
+                    <X size={17} />
+                  </button>
+                ) : null}
+              </>
             )}
           />
         </div>
@@ -1226,6 +1271,169 @@ function RowActions({ onEdit, onDelete, extraActions }: RowActionsProps) {
   )
 }
 
+type TableQrModalProps = {
+  table: ApiRestaurantTable
+  onClose: () => void
+  onRegenerate: () => void
+  onRevoke: () => void
+}
+
+function TableQrModal({ table, onClose, onRegenerate, onRevoke }: TableQrModalProps) {
+  const publicUrl = publicTabletUrl(table.token)
+  const isTokenActive = !table.token_revoked_at && table.is_active && table.status !== 'inactive'
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    void Promise.resolve()
+      .then(() => {
+        if (!isMounted) return null
+
+        setQrDataUrl(null)
+        if (!isTokenActive) return null
+
+        return QRCode.toDataURL(publicUrl, {
+          errorCorrectionLevel: 'M',
+          margin: 2,
+          width: 320,
+        })
+      })
+      .then((dataUrl) => {
+        if (isMounted && dataUrl) setQrDataUrl(dataUrl)
+      })
+      .catch(() => {
+        if (isMounted) setMessage('Nao foi possivel gerar o QR Code.')
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isTokenActive, publicUrl])
+
+  async function copyPublicUrl() {
+    if (!isTokenActive) {
+      setMessage('Token revogado. Regenere antes de copiar o link.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      setMessage('Link copiado.')
+    } catch {
+      setMessage('Não foi possível copiar automaticamente.')
+    }
+  }
+
+  function downloadQrCode() {
+    if (!qrDataUrl || !isTokenActive) return
+
+    const link = document.createElement('a')
+    link.href = qrDataUrl
+    link.download = `kipedido-${table.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-qr.png`
+    link.click()
+  }
+
+  function printQrCode() {
+    if (!isTokenActive) {
+      setMessage('Token revogado. Regenere antes de imprimir o QR Code.')
+      return
+    }
+
+    const printWindow = window.open('', '_blank', 'width=420,height=620')
+
+    if (!printWindow || !qrDataUrl) {
+      setMessage('Não foi possível abrir a impressão.')
+      return
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR Code ${table.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; text-align: center; color: #111827; }
+            img { width: 280px; height: 280px; }
+            code { display: block; margin-top: 12px; word-break: break-all; font-size: 12px; }
+            p { color: #4b5563; }
+          </style>
+        </head>
+        <body>
+          <h1>${table.name}</h1>
+          <p>Aponte a câmera para abrir o cardápio KiPedido.</p>
+          <img src="${qrDataUrl}" alt="QR Code ${table.name}" />
+          <code>${publicUrl}</code>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
+  return (
+    <AdminModal title={`QR Code - ${table.name}`} onClose={onClose}>
+      <section className="qr-token-panel">
+        <div className="qr-token-panel__status">
+          <StatusBadge label={isTokenActive ? 'Token ativo' : 'Token revogado'} tone={isTokenActive ? 'success' : 'danger'} />
+          {table.token_regenerated_at ? <span>Gerado em {formatDateTime(table.token_regenerated_at)}</span> : null}
+        </div>
+
+        <div className="qr-token-panel__body">
+          <div className="qr-token-preview">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt={`QR Code ${table.name}`} />
+            ) : (
+              <StateMessage title={isTokenActive ? 'Gerando QR Code...' : 'Token revogado'} tone={isTokenActive ? 'loading' : 'error'} />
+            )}
+          </div>
+          <div className="qr-token-details">
+            <label>
+              Link público do tablet
+              <input value={publicUrl} readOnly />
+            </label>
+            <label>
+              Token atual
+              <input value={table.token} readOnly />
+            </label>
+            <small>
+              Ao regenerar o token, qualquer QR code antigo deixa de funcionar. Tokens revogados só voltam a abrir a mesa após uma nova regeneração.
+            </small>
+          </div>
+        </div>
+
+        {message ? <StateMessage title={message} tone="success" /> : null}
+
+        <div className="admin-form__actions">
+          <button className="secondary-button" type="button" disabled={!isTokenActive} onClick={() => void copyPublicUrl()}>
+            <Copy size={18} />
+            Copiar link
+          </button>
+          <button className="secondary-button" type="button" disabled={!qrDataUrl || !isTokenActive} onClick={downloadQrCode}>
+            <Download size={18} />
+            Baixar QR
+          </button>
+          <button className="secondary-button" type="button" disabled={!qrDataUrl || !isTokenActive} onClick={printQrCode}>
+            <Printer size={18} />
+            Imprimir
+          </button>
+          <button className="secondary-button" type="button" onClick={onRegenerate}>
+            <KeyRound size={18} />
+            Regenerar
+          </button>
+          {isTokenActive ? (
+            <button className="secondary-button secondary-button--danger" type="button" onClick={onRevoke}>
+              <X size={18} />
+              Revogar
+            </button>
+          ) : null}
+        </div>
+      </section>
+    </AdminModal>
+  )
+}
+
 function AdminModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
     <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
@@ -1249,6 +1457,10 @@ function matchesSearch(values: Array<string | number | null | undefined>, search
   if (!normalizedSearch) return true
 
   return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedSearch))
+}
+
+function publicTabletUrl(token: string) {
+  return `${window.location.origin}/tablet/${encodeURIComponent(token)}`
 }
 
 function exportCsv(fileName: string, headers: string[], rows: string[][]) {

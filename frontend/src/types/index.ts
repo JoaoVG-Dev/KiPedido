@@ -76,6 +76,8 @@ export type ApiRestaurantTable = {
   name: string
   number: number
   token: string
+  token_regenerated_at?: string | null
+  token_revoked_at?: string | null
   status: TableStatus
   is_active: boolean
   active_session?: ApiTableSession | null
