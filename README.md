@@ -102,9 +102,10 @@ As credenciais acima sao criadas apenas pelo seeder local.
 
 ## Mesa De Teste Para Tablet
 
-O seeder cria 10 mesas com tokens previsiveis para desenvolvimento. Use:
+O fluxo real de tablet deve iniciar em `/tablet`, onde o usuario informa o token da mesa ou acessa a rota por QR code. O seeder cria 10 mesas com tokens previsiveis para desenvolvimento. Use:
 
 ```txt
+Entrada neutra: http://127.0.0.1:5173/tablet
 Token: mesa-01-teste
 URL: http://127.0.0.1:5173/tablet/mesa-01-teste
 API menu: http://127.0.0.1:8000/api/tablet/mesa-01-teste/menu
@@ -152,11 +153,13 @@ Antes de publicar uma nova etapa visual, valide backend, lint, typecheck, build 
 A fase atual aproxima o KiPedido de uma operacao instalavel em restaurante:
 
 - PWA: manifest, metadados, icones e service worker simples para permitir instalacao em navegadores/tablets compativeis.
+- PWA de producao: o manifesto abre `/tablet`, sem token fixo de mesa de teste. Tokens reais devem ser distribuidos por QR code ou informados na tela de vinculo.
 - Tablet: estados de mesa mais claros e bloqueio visual de novos pedidos quando a conta ja foi solicitada ou a mesa nao esta disponivel.
 - Impressao simples: cozinha pode imprimir a comanda do pedido e caixa pode imprimir o recibo/conta via `window.print`, sem integracao com impressora termica ainda.
-- Admin: resumos operacionais de mesas/produtos, ativacao/pausa de produtos e configuracoes basicas editaveis do restaurante.
+- Admin: resumos operacionais, CRUD de mesas/categorias/produtos, ativacao/pausa de produtos, exportacao simples de relatorios, filtros em listas e configuracoes basicas editaveis do restaurante.
+- Financeiro: pagamentos parciais registram apenas o valor aplicado em cada transacao; troco fica separado e dashboard/relatorios somam receita real sem duplicar contas divididas.
 
-Esta fase nao adiciona pagamento real, multi-tenant ou integracao fiscal.
+Esta fase nao adiciona pagamento real, multi-tenant, integracao fiscal ou CRUD completo de usuarios. O backend atual expoe usuarios como listagem administrativa.
 
 Tamanhos recomendados para conferencia manual:
 
