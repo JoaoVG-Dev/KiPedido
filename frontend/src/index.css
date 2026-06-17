@@ -3212,49 +3212,228 @@ code {
 
 .cashier-payment-form {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--border-soft);
-  border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 122, 24, 0.16);
+  border-radius: 1.35rem;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 237, 0.72));
+  box-shadow: 0 18px 45px rgba(123, 63, 20, 0.08);
 }
 
-.cashier-payment-form label {
+.cashier-payment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cashier-payment-header div {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.2rem;
+}
+
+.cashier-payment-header strong {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.cashier-payment-header > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(255, 122, 24, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 122, 24, 0.1);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.cashier-payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.cashier-payment-method {
+  display: grid;
+  gap: 0.16rem;
+  min-height: 62px;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.cashier-payment-method span {
+  font-size: 0.92rem;
+  font-weight: 950;
+}
+
+.cashier-payment-method small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cashier-payment-method:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 122, 24, 0.48);
+  box-shadow: 0 12px 24px rgba(123, 63, 20, 0.1);
+}
+
+.cashier-payment-method.is-active {
+  border-color: var(--primary);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 24, 0.96), rgba(232, 93, 4, 0.96));
+  color: #fff;
+  box-shadow: 0 16px 30px rgba(255, 122, 24, 0.28);
+}
+
+.cashier-payment-method.is-active small {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.cashier-amount-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cashier-amount-field > span {
   color: var(--text-muted);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.cashier-payment-form select,
-.cashier-payment-form input {
-  width: 100%;
-  min-height: 46px;
+.cashier-amount-input {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
   border: 1px solid var(--border);
-  border-radius: 0.9rem;
+  border-radius: 1rem;
   background: var(--surface);
-  color: var(--text);
-  padding: 0 0.85rem;
-  font: inherit;
-  font-weight: 800;
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.cashier-payment-preview {
+.cashier-amount-input:focus-within {
+  border-color: rgba(255, 122, 24, 0.58);
+  box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.11);
+}
+
+.cashier-amount-input.has-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08);
+}
+
+.cashier-amount-input small {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 52px;
+  border-right: 1px solid var(--border);
+  background: rgba(255, 247, 237, 0.85);
+  color: var(--text-muted);
+  font-weight: 950;
+}
+
+.cashier-amount-input input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0 0.9rem;
+  font: inherit;
+  font-size: 1.22rem;
+  font-weight: 950;
+}
+
+.cashier-quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.cashier-quick-amounts button {
+  min-height: 38px;
+  border: 1px solid rgba(255, 122, 24, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 122, 24, 0.08);
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.cashier-quick-amounts button:hover {
+  border-color: rgba(255, 122, 24, 0.36);
+  background: rgba(255, 122, 24, 0.14);
+}
+
+.cashier-payment-summary {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.25rem;
+}
+
+.cashier-payment-summary div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
 }
 
-.cashier-payment-preview strong {
+.cashier-payment-summary strong {
   color: var(--text);
 }
 
+.cashier-payment-summary__total {
+  margin-top: 0.2rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--border);
+}
+
+.cashier-payment-summary__total span,
+.cashier-payment-summary__total strong {
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
 .cashier-payment-error {
+  display: block;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(220, 38, 38, 0.07);
   color: var(--danger);
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.4;
 }
+
+@media (max-width: 720px) {
+  .cashier-payment-method-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashier-quick-amounts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+ 
