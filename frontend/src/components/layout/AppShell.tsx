@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
-import { clearAuthToken } from '../../services/auth'
-import type { NavItem } from '../../types'
+import { useEffect, useState } from 'react'
+import { clearAuthToken, me } from '../../services/auth'
+import { StateMessage } from '../shared/StateMessage'
+import type { ApiUser, NavItem } from '../../types'
 
 type AppArea = 'admin' | 'kitchen' | 'cashier'
 
@@ -46,13 +48,86 @@ const titleByArea: Record<AppArea, string> = {
   cashier: 'Caixa',
 }
 
+const allowedRolesByArea: Record<AppArea, ApiUser['role'][]> = {
+  admin: ['admin', 'manager'],
+  kitchen: ['admin', 'manager', 'kitchen'],
+  cashier: ['admin', 'manager', 'cashier'],
+}
+
+const homeByRole: Record<ApiUser['role'], string> = {
+  admin: '/admin',
+  manager: '/admin',
+  kitchen: '/kitchen',
+  cashier: '/cashier',
+}
+
+type AuthGuardState = {
+  isLoading: boolean
+  user: ApiUser | null
+  error: string | null
+}
+
 export function AppShell({ area }: { area: AppArea }) {
   const navItems = navByArea[area]
   const navigate = useNavigate()
+  const [authGuard, setAuthGuard] = useState<AuthGuardState>({
+    isLoading: true,
+    user: null,
+    error: null,
+  })
+
+  useEffect(() => {
+    let isMounted = true
+
+    void Promise.resolve()
+      .then(() => {
+        if (!isMounted) return null
+
+        setAuthGuard({ isLoading: true, user: null, error: null })
+
+        return me()
+      })
+      .then((user) => {
+        if (!isMounted || !user) return
+
+        if (!allowedRolesByArea[area].includes(user.role)) {
+          navigate(homeByRole[user.role], { replace: true })
+          return
+        }
+
+        setAuthGuard({ isLoading: false, user, error: null })
+      })
+      .catch(() => {
+        if (!isMounted) return
+
+        clearAuthToken()
+        navigate('/admin/login', { replace: true })
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [area, navigate])
 
   function handleLogout() {
     clearAuthToken()
     navigate('/admin/login')
+  }
+
+  if (authGuard.isLoading) {
+    return (
+      <main className="auth-guard-page">
+        <StateMessage title="Validando sessão..." description="Conferindo usuário e perfil de acesso." tone="loading" />
+      </main>
+    )
+  }
+
+  if (authGuard.error) {
+    return (
+      <main className="auth-guard-page">
+        <StateMessage title={authGuard.error} tone="error" action={{ to: '/admin/login', label: 'Entrar novamente' }} />
+      </main>
+    )
   }
 
   return (

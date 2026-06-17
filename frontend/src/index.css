@@ -311,6 +311,16 @@ code {
   padding: 34px;
 }
 
+.auth-guard-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 243, 0.92), rgba(246, 248, 250, 0.98)),
+    var(--bg-subtle);
+}
+
 .page-stack {
   display: grid;
   gap: 24px;
