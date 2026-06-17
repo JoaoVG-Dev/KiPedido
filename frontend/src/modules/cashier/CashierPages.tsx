@@ -274,6 +274,7 @@ export function CashierTableDetailPage() {
       await apiPost<ApiRestaurantTable>(`/cashier/tables/${id}/release`);
       setSuccess("Mesa liberada com sucesso.");
       await tableQuery.reload();
+      await billQuery.reload().catch(() => undefined);
     } catch (caught) {
       setActionError(
         caught instanceof Error ? caught.message : "Erro ao liberar mesa.",
