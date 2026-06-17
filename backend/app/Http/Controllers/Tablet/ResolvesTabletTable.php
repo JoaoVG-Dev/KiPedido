@@ -12,9 +12,15 @@ trait ResolvesTabletTable
     {
         $table = RestaurantTable::where('token', $token)->first();
 
-        if (! $table || ! $table->is_active || $table->status === 'inactive') {
+        if (! $table) {
             throw ValidationException::withMessages([
-                'token' => 'Token de mesa inválido.',
+                'token' => 'Token de mesa invalido. Confira o QR code ou solicite um novo acesso a equipe.',
+            ]);
+        }
+
+        if ($table->token_revoked_at || ! $table->is_active || $table->status === 'inactive') {
+            throw ValidationException::withMessages([
+                'token' => 'Este token de mesa foi revogado ou esta inativo. Solicite um novo QR code a equipe.',
             ]);
         }
 

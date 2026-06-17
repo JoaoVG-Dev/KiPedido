@@ -15,6 +15,7 @@ Route::middleware(['auth:sanctum', 'role:admin,manager'])->prefix('admin')->grou
 
     Route::apiResource('tables', TableController::class);
     Route::post('tables/{table}/regenerate-token', [TableController::class, 'regenerateToken']);
+    Route::post('tables/{table}/revoke-token', [TableController::class, 'revokeToken']);
 
     Route::apiResource('categories', CategoryController::class)->except(['show']);
 

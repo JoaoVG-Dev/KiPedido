@@ -30,6 +30,8 @@ class TableController extends Controller
 
         $table = RestaurantTable::create($data + [
             'token' => Str::lower(Str::random(32)),
+            'token_regenerated_at' => now(),
+            'token_revoked_at' => null,
             'status' => $data['status'] ?? 'available',
             'is_active' => $data['is_active'] ?? true,
         ]);
@@ -66,6 +68,7 @@ class TableController extends Controller
         $table->update([
             'is_active' => false,
             'status' => 'inactive',
+            'token_revoked_at' => now(),
         ]);
 
         return response()->noContent();
@@ -73,9 +76,25 @@ class TableController extends Controller
 
     public function regenerateToken(Request $request, RestaurantTable $table, LogAction $logAction)
     {
-        $table->update(['token' => Str::lower(Str::random(32))]);
+        $table->update([
+            'token' => Str::lower(Str::random(40)),
+            'token_regenerated_at' => now(),
+            'token_revoked_at' => null,
+        ]);
 
         $logAction->execute('table.token_regenerated', "Token da {$table->name} regenerado.", [
+            'user' => $request->user(),
+            'table' => $table,
+        ]);
+
+        return response()->json($table->refresh());
+    }
+
+    public function revokeToken(Request $request, RestaurantTable $table, LogAction $logAction)
+    {
+        $table->update(['token_revoked_at' => now()]);
+
+        $logAction->execute('table.token_revoked', "Token da {$table->name} revogado.", [
             'user' => $request->user(),
             'table' => $table,
         ]);

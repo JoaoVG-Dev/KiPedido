@@ -14,6 +14,8 @@ class RestaurantTable extends Model
         'name',
         'number',
         'token',
+        'token_regenerated_at',
+        'token_revoked_at',
         'status',
         'is_active',
     ];
@@ -22,6 +24,8 @@ class RestaurantTable extends Model
     {
         return [
             'is_active' => 'boolean',
+            'token_regenerated_at' => 'datetime',
+            'token_revoked_at' => 'datetime',
         ];
     }
 
