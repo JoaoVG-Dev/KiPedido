@@ -2,8 +2,10 @@ import {
   BadgeDollarSign,
   Bell,
   ClipboardList,
-  FileBarChart,
+  Download,
+  KeyRound,
   PackageCheck,
+  Pencil,
   Plus,
   RefreshCw,
   Save,
@@ -11,10 +13,12 @@ import {
   Settings,
   ShieldCheck,
   Tags,
+  Trash2,
   UserRoundPlus,
   Utensils,
+  X,
 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { MetricCard } from '../../components/shared/MetricCard'
 import { PageHeader } from '../../components/shared/PageHeader'
@@ -22,7 +26,7 @@ import { ApiStateMessage, StateMessage } from '../../components/shared/StateMess
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useApiQuery } from '../../hooks/useApiQuery'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { apiGet, apiPost, apiPut } from '../../services/api'
+import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../services/format'
 import type {
   ApiActionLog,
@@ -51,6 +55,39 @@ const tableStatusTone: Record<TableStatus, StatusTone> = {
   waiting_payment: 'warning',
   closed: 'neutral',
   inactive: 'danger',
+}
+
+const tableStatusOptions: Array<{ value: TableStatus; label: string }> = [
+  { value: 'available', label: 'Livre' },
+  { value: 'occupied', label: 'Ocupada' },
+  { value: 'waiting_payment', label: 'Conta solicitada' },
+  { value: 'closed', label: 'Fechada' },
+  { value: 'inactive', label: 'Inativa' },
+]
+
+type TableFormState = {
+  name: string
+  number: string
+  status: TableStatus
+  is_active: boolean
+}
+
+type CategoryFormState = {
+  name: string
+  description: string
+  sort_order: string
+  is_active: boolean
+}
+
+type ProductFormState = {
+  category_id: string
+  name: string
+  description: string
+  price: string
+  image_path: string
+  is_available: boolean
+  is_active: boolean
+  sort_order: string
 }
 
 export function AdminDashboard() {
@@ -127,6 +164,107 @@ export function AdminTablesPage() {
   usePageTitle('Mesas')
   const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiRestaurantTable>>('/admin/tables'), [])
   const tables = data?.data ?? []
+  const [search, setSearch] = useState('')
+  const [editingTable, setEditingTable] = useState<ApiRestaurantTable | null>(null)
+  const [tableForm, setTableForm] = useState<TableFormState | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const filteredTables = tables.filter((table) => matchesSearch([
+    table.name,
+    String(table.number),
+    table.token,
+    tableStatusLabel[table.status],
+  ], search))
+
+  function openNewTableForm() {
+    const nextNumber = tables.reduce((max, table) => Math.max(max, table.number), 0) + 1
+
+    setEditingTable(null)
+    setTableForm({
+      name: `Mesa ${nextNumber}`,
+      number: String(nextNumber),
+      status: 'available',
+      is_active: true,
+    })
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  function openEditTableForm(table: ApiRestaurantTable) {
+    setEditingTable(table)
+    setTableForm({
+      name: table.name,
+      number: String(table.number),
+      status: table.status,
+      is_active: table.is_active,
+    })
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  async function saveTable(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!tableForm) return
+
+    setIsSaving(true)
+    setSuccess(null)
+    setActionError(null)
+
+    const payload = {
+      name: tableForm.name.trim(),
+      number: Number(tableForm.number),
+      status: tableForm.status,
+      is_active: tableForm.is_active,
+    }
+
+    try {
+      if (editingTable) {
+        await apiPut<ApiRestaurantTable>(`/admin/tables/${editingTable.id}`, payload)
+        setSuccess('Mesa atualizada com sucesso.')
+      } else {
+        await apiPost<ApiRestaurantTable>('/admin/tables', payload)
+        setSuccess('Mesa criada com sucesso.')
+      }
+
+      setTableForm(null)
+      setEditingTable(null)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Não foi possível salvar a mesa.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function deleteTable(table: ApiRestaurantTable) {
+    if (!window.confirm(`Inativar ${table.name}?`)) return
+
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      await apiDelete(`/admin/tables/${table.id}`)
+      setSuccess(`${table.name} foi inativada.`)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Não foi possível inativar a mesa.')
+    }
+  }
+
+  async function regenerateTableToken(table: ApiRestaurantTable) {
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      await apiPost<ApiRestaurantTable>(`/admin/tables/${table.id}/regenerate-token`)
+      setSuccess(`Token da ${table.name} regenerado.`)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Não foi possível regenerar o token.')
+    }
+  }
 
   return (
     <section className="page-stack admin-page">
@@ -135,7 +273,7 @@ export function AdminTablesPage() {
         title="Mesas"
         description="Gerencie tokens, status e consumo atual de cada mesa."
         actions={(
-          <button className="primary-button" type="button">
+          <button className="primary-button" type="button" onClick={openNewTableForm}>
             <Plus size={18} />
             Nova mesa
           </button>
@@ -143,12 +281,14 @@ export function AdminTablesPage() {
       />
 
       {!isLoading && !error ? <AdminTableSummary tables={tables} /> : null}
+      {success ? <StateMessage title={success} tone="success" /> : null}
+      {actionError ? <StateMessage title={actionError} tone="error" /> : null}
 
       <section className="panel">
         <div className="toolbar">
           <label className="search-box">
             <Search size={18} />
-            <input placeholder="Buscar mesa" />
+            <input placeholder="Buscar mesa" value={search} onChange={(event) => setSearch(event.target.value)} />
           </label>
           <button className="secondary-button" type="button" onClick={() => void reload()}>
             <RefreshCw size={18} />
@@ -158,13 +298,241 @@ export function AdminTablesPage() {
 
         {isLoading ? <StateMessage title="Carregando mesas..." tone="loading" /> : null}
         {error ? <ApiStateMessage error={error} /> : null}
-        {!isLoading && !error ? <TableDataTable tables={tables} /> : null}
+        {!isLoading && !error ? (
+          <TableDataTable
+            tables={filteredTables}
+            onEdit={openEditTableForm}
+            onDelete={(table) => void deleteTable(table)}
+            onRegenerateToken={(table) => void regenerateTableToken(table)}
+          />
+        ) : null}
       </section>
+
+      {tableForm ? (
+        <AdminModal title={editingTable ? 'Editar mesa' : 'Nova mesa'} onClose={() => setTableForm(null)}>
+          <form className="admin-form" onSubmit={(event) => void saveTable(event)}>
+            <label>
+              Nome
+              <input value={tableForm.name} onChange={(event) => setTableForm((current) => current ? { ...current, name: event.target.value } : current)} required />
+            </label>
+            <label>
+              Número
+              <input type="number" min="1" value={tableForm.number} onChange={(event) => setTableForm((current) => current ? { ...current, number: event.target.value } : current)} required />
+            </label>
+            <label>
+              Status
+              <select value={tableForm.status} onChange={(event) => setTableForm((current) => current ? { ...current, status: event.target.value as TableStatus } : current)}>
+                {tableStatusOptions.map((option) => (
+                  <option value={option.value} key={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="toggle-row toggle-row--compact">
+              <Utensils size={20} />
+              <span>
+                <strong>Mesa ativa</strong>
+                <small>Mesas inativas não aceitam pedidos pelo tablet.</small>
+              </span>
+              <input type="checkbox" checked={tableForm.is_active} onChange={(event) => setTableForm((current) => current ? { ...current, is_active: event.target.checked } : current)} />
+            </label>
+            <div className="admin-form__actions">
+              <button className="secondary-button" type="button" onClick={() => setTableForm(null)}>Cancelar</button>
+              <button className="primary-button" type="submit" disabled={isSaving}>
+                <Save size={18} />
+                {isSaving ? 'Salvando...' : 'Salvar mesa'}
+              </button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
     </section>
   )
 }
 
 export function AdminCategoriesPage() {
+  usePageTitle('Categorias')
+  const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiCategory>>('/admin/categories'), [])
+  const categories = data?.data ?? []
+  const [search, setSearch] = useState('')
+  const [editingCategory, setEditingCategory] = useState<ApiCategory | null>(null)
+  const [categoryForm, setCategoryForm] = useState<CategoryFormState | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const filteredCategories = categories.filter((category) => matchesSearch([
+    category.name,
+    category.description ?? '',
+    category.is_active ? 'ativa' : 'inativa',
+    String(category.sort_order),
+  ], search))
+
+  function openNewCategoryForm() {
+    setEditingCategory(null)
+    setCategoryForm({
+      name: '',
+      description: '',
+      sort_order: String(categories.length + 1),
+      is_active: true,
+    })
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  function openEditCategoryForm(category: ApiCategory) {
+    setEditingCategory(category)
+    setCategoryForm({
+      name: category.name,
+      description: category.description ?? '',
+      sort_order: String(category.sort_order),
+      is_active: category.is_active,
+    })
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  async function saveCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!categoryForm) return
+
+    setIsSaving(true)
+    setSuccess(null)
+    setActionError(null)
+
+    const payload = {
+      name: categoryForm.name.trim(),
+      description: categoryForm.description.trim() || null,
+      sort_order: Number(categoryForm.sort_order || 0),
+      is_active: categoryForm.is_active,
+    }
+
+    try {
+      if (editingCategory) {
+        await apiPut<ApiCategory>(`/admin/categories/${editingCategory.id}`, payload)
+        setSuccess('Categoria atualizada com sucesso.')
+      } else {
+        await apiPost<ApiCategory>('/admin/categories', payload)
+        setSuccess('Categoria criada com sucesso.')
+      }
+
+      setCategoryForm(null)
+      setEditingCategory(null)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Nao foi possivel salvar a categoria.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function deleteCategory(category: ApiCategory) {
+    if (!window.confirm(`Inativar categoria ${category.name}?`)) return
+
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      await apiDelete(`/admin/categories/${category.id}`)
+      setSuccess(`Categoria ${category.name} inativada.`)
+      await reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Nao foi possivel inativar a categoria.')
+    }
+  }
+
+  return (
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Cardapio"
+        title="Categorias"
+        description="Organize as secoes que aparecem no cardapio digital da mesa."
+        actions={(
+          <button className="primary-button" type="button" onClick={openNewCategoryForm}>
+            <Tags size={18} />
+            Nova categoria
+          </button>
+        )}
+      />
+
+      {success ? <StateMessage title={success} tone="success" /> : null}
+      {actionError ? <StateMessage title={actionError} tone="error" /> : null}
+
+      <section className="panel">
+        <div className="toolbar">
+          <label className="search-box">
+            <Search size={18} />
+            <input placeholder="Buscar categoria" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <button className="secondary-button" type="button" onClick={() => void reload()}>
+            <RefreshCw size={18} />
+            Atualizar
+          </button>
+        </div>
+
+        {isLoading ? <StateMessage title="Carregando categorias..." tone="loading" /> : null}
+        {error ? <ApiStateMessage error={error} /> : null}
+        {!isLoading && !error && filteredCategories.length === 0 ? <StateMessage title="Nenhuma categoria encontrada." /> : null}
+        {!isLoading && !error && filteredCategories.length > 0 ? (
+          <div className="data-table data-table--with-actions data-table--category-actions">
+            <div className="data-table__head">
+              <span>Categoria</span>
+              <span>Descricao</span>
+              <span>Status</span>
+              <span>Acoes</span>
+            </div>
+            {filteredCategories.map((category) => (
+              <div className="data-table__row" key={category.id}>
+                <strong data-label="Categoria">{category.name}</strong>
+                <span data-label="Descricao">{category.products_count ?? 0} produto{category.products_count === 1 ? '' : 's'} - {category.description ?? 'Sem descricao'}</span>
+                <span data-label="Status">{category.is_active ? 'Ativa' : 'Inativa'} - ordem {category.sort_order}</span>
+                <RowActions
+                  onEdit={() => openEditCategoryForm(category)}
+                  onDelete={() => void deleteCategory(category)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {categoryForm ? (
+        <AdminModal title={editingCategory ? 'Editar categoria' : 'Nova categoria'} onClose={() => setCategoryForm(null)}>
+          <form className="admin-form" onSubmit={(event) => void saveCategory(event)}>
+            <label>
+              Nome
+              <input value={categoryForm.name} onChange={(event) => setCategoryForm((current) => current ? { ...current, name: event.target.value } : current)} required />
+            </label>
+            <label>
+              Descricao
+              <textarea value={categoryForm.description} onChange={(event) => setCategoryForm((current) => current ? { ...current, description: event.target.value } : current)} rows={3} />
+            </label>
+            <label>
+              Ordem
+              <input type="number" min="0" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((current) => current ? { ...current, sort_order: event.target.value } : current)} />
+            </label>
+            <label className="toggle-row toggle-row--compact">
+              <Tags size={20} />
+              <span>
+                <strong>Categoria ativa</strong>
+                <small>Categorias inativas deixam de aparecer no cardapio.</small>
+              </span>
+              <input type="checkbox" checked={categoryForm.is_active} onChange={(event) => setCategoryForm((current) => current ? { ...current, is_active: event.target.checked } : current)} />
+            </label>
+            <div className="admin-form__actions">
+              <button className="secondary-button" type="button" onClick={() => setCategoryForm(null)}>Cancelar</button>
+              <button className="primary-button" type="submit" disabled={isSaving}>
+                <Save size={18} />
+                {isSaving ? 'Salvando...' : 'Salvar categoria'}
+              </button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
+    </section>
+  )
+}
+
+export function LegacyAdminCategoriesPage() {
   usePageTitle('Categorias')
   const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiCategory>>('/admin/categories'), [])
 
@@ -189,6 +557,278 @@ export function AdminCategoriesPage() {
 }
 
 export function AdminProductsPage() {
+  usePageTitle('Produtos')
+  const productsQuery = useApiQuery(() => apiGet<PaginatedResponse<ApiProduct>>('/admin/products'), [])
+  const categoriesQuery = useApiQuery(() => apiGet<PaginatedResponse<ApiCategory>>('/admin/categories'), [])
+  const products = productsQuery.data?.data ?? []
+  const categories = categoriesQuery.data?.data ?? []
+  const activeProducts = products.filter((product) => product.is_active)
+  const visibleProducts = activeProducts.filter((product) => product.is_available)
+  const [search, setSearch] = useState('')
+  const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null)
+  const [productForm, setProductForm] = useState<ProductFormState | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [updatingProductId, setUpdatingProductId] = useState<number | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const filteredProducts = products.filter((product) => matchesSearch([
+    product.name,
+    product.description ?? '',
+    product.category?.name ?? '',
+    product.is_available ? 'disponivel' : 'pausado',
+  ], search))
+
+  function emptyProductForm(): ProductFormState {
+    return {
+      category_id: String(categories[0]?.id ?? ''),
+      name: '',
+      description: '',
+      price: '',
+      image_path: '',
+      is_available: true,
+      is_active: true,
+      sort_order: String(products.length + 1),
+    }
+  }
+
+  function openNewProductForm() {
+    setEditingProduct(null)
+    setProductForm(emptyProductForm())
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  function openEditProductForm(product: ApiProduct) {
+    setEditingProduct(product)
+    setProductForm({
+      category_id: String(product.category_id),
+      name: product.name,
+      description: product.description ?? '',
+      price: String(product.price),
+      image_path: product.image_path ?? '',
+      is_available: product.is_available,
+      is_active: product.is_active,
+      sort_order: String(product.sort_order),
+    })
+    setSuccess(null)
+    setActionError(null)
+  }
+
+  async function reloadProducts() {
+    await productsQuery.reload()
+    await categoriesQuery.reload()
+  }
+
+  async function toggleProduct(product: ApiProduct) {
+    setUpdatingProductId(product.id)
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      await apiPost<ApiProduct>(`/admin/products/${product.id}/toggle-availability`)
+      setSuccess(product.is_available ? 'Produto pausado.' : 'Produto ativado para venda.')
+      await productsQuery.reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Nao foi possivel alterar a disponibilidade.')
+    } finally {
+      setUpdatingProductId(null)
+    }
+  }
+
+  async function saveProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!productForm) return
+
+    setIsSaving(true)
+    setSuccess(null)
+    setActionError(null)
+
+    const payload = {
+      category_id: Number(productForm.category_id),
+      name: productForm.name.trim(),
+      description: productForm.description.trim() || null,
+      price: Number(productForm.price),
+      image_path: productForm.image_path.trim() || null,
+      is_available: productForm.is_available,
+      is_active: productForm.is_active,
+      sort_order: Number(productForm.sort_order || 0),
+    }
+
+    try {
+      if (editingProduct) {
+        await apiPut<ApiProduct>(`/admin/products/${editingProduct.id}`, payload)
+        setSuccess('Produto atualizado com sucesso.')
+      } else {
+        await apiPost<ApiProduct>('/admin/products', payload)
+        setSuccess('Produto criado com sucesso.')
+      }
+
+      setProductForm(null)
+      setEditingProduct(null)
+      await productsQuery.reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Nao foi possivel salvar o produto.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function deleteProduct(product: ApiProduct) {
+    if (!window.confirm(`Inativar produto ${product.name}?`)) return
+
+    setSuccess(null)
+    setActionError(null)
+
+    try {
+      await apiDelete(`/admin/products/${product.id}`)
+      setSuccess(`Produto ${product.name} inativado.`)
+      await productsQuery.reload()
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : 'Nao foi possivel inativar o produto.')
+    }
+  }
+
+  return (
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Cardapio"
+        title="Produtos"
+        description="Itens vendidos no tablet, com preco, categoria e disponibilidade."
+        actions={(
+          <button className="primary-button" type="button" onClick={openNewProductForm} disabled={categories.length === 0}>
+            <Plus size={18} />
+            Novo produto
+          </button>
+        )}
+      />
+
+      {success ? <StateMessage title={success} tone="success" /> : null}
+      {actionError ? <StateMessage title={actionError} tone="error" /> : null}
+      {productsQuery.isLoading ? <StateMessage title="Carregando produtos..." tone="loading" /> : null}
+      {productsQuery.error ? <ApiStateMessage error={productsQuery.error} /> : null}
+      {categoriesQuery.error ? <ApiStateMessage error={categoriesQuery.error} /> : null}
+      {!productsQuery.isLoading && !productsQuery.error && products.length === 0 ? <StateMessage title="Nenhum produto cadastrado." /> : null}
+      {!categoriesQuery.isLoading && categories.length === 0 ? <StateMessage title="Cadastre uma categoria antes de criar produtos." /> : null}
+
+      {!productsQuery.isLoading && !productsQuery.error ? (
+        <div className="admin-ops-strip">
+          <MetricCard icon={PackageCheck} label="Ativos" value={String(activeProducts.length)} detail="no cadastro" tone="info" />
+          <MetricCard icon={Utensils} label="Visiveis no tablet" value={String(visibleProducts.length)} detail="vendendo agora" tone="success" />
+          <MetricCard icon={Tags} label="Pausados" value={String(activeProducts.length - visibleProducts.length)} detail="fora do cardapio" tone="warning" />
+        </div>
+      ) : null}
+
+      <section className="panel">
+        <div className="toolbar">
+          <label className="search-box">
+            <Search size={18} />
+            <input placeholder="Buscar produto" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <button className="secondary-button" type="button" onClick={() => void reloadProducts()}>
+            <RefreshCw size={18} />
+            Atualizar
+          </button>
+        </div>
+
+        <div className="product-grid">
+          {filteredProducts.map((product) => (
+            <article className="product-card" key={product.id}>
+              <div className="product-card__media">
+                <span>{(product.category?.name ?? 'Produto').slice(0, 2).toUpperCase()}</span>
+              </div>
+              <div className="product-card__body">
+                <div className="product-card__topline">
+                  <span>{product.category?.name ?? 'Sem categoria'}</span>
+                  <StatusBadge label={product.is_available ? 'Disponivel' : 'Pausado'} tone={product.is_available ? 'success' : 'danger'} />
+                </div>
+                <h2>{product.name}</h2>
+                <p>{product.description ?? 'Sem descricao cadastrada.'}</p>
+                <div className="product-card__footer">
+                  <strong>{formatCurrency(product.price)}</strong>
+                  <small>{product.is_available ? 'Visivel no tablet' : 'Oculto no cardapio'}</small>
+                </div>
+                <div className="product-card__actions">
+                  <button className="secondary-button" type="button" disabled={updatingProductId === product.id} onClick={() => void toggleProduct(product)}>
+                    {product.is_available ? 'Pausar venda' : 'Ativar venda'}
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => openEditProductForm(product)}>
+                    <Pencil size={17} />
+                    Editar
+                  </button>
+                  <button className="secondary-button secondary-button--danger" type="button" onClick={() => void deleteProduct(product)}>
+                    <Trash2 size={17} />
+                    Inativar
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {productForm ? (
+        <AdminModal title={editingProduct ? 'Editar produto' : 'Novo produto'} onClose={() => setProductForm(null)}>
+          <form className="admin-form" onSubmit={(event) => void saveProduct(event)}>
+            <label>
+              Categoria
+              <select value={productForm.category_id} onChange={(event) => setProductForm((current) => current ? { ...current, category_id: event.target.value } : current)} required>
+                {categories.map((category) => (
+                  <option value={category.id} key={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Nome
+              <input value={productForm.name} onChange={(event) => setProductForm((current) => current ? { ...current, name: event.target.value } : current)} required />
+            </label>
+            <label>
+              Descricao
+              <textarea value={productForm.description} onChange={(event) => setProductForm((current) => current ? { ...current, description: event.target.value } : current)} rows={3} />
+            </label>
+            <label>
+              Preco
+              <input type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => setProductForm((current) => current ? { ...current, price: event.target.value } : current)} required />
+            </label>
+            <label>
+              Caminho da imagem
+              <input value={productForm.image_path} onChange={(event) => setProductForm((current) => current ? { ...current, image_path: event.target.value } : current)} placeholder="products/foto.jpg" />
+            </label>
+            <label>
+              Ordem
+              <input type="number" min="0" value={productForm.sort_order} onChange={(event) => setProductForm((current) => current ? { ...current, sort_order: event.target.value } : current)} />
+            </label>
+            <label className="toggle-row toggle-row--compact">
+              <PackageCheck size={20} />
+              <span>
+                <strong>Disponivel para venda</strong>
+                <small>Controla a visibilidade imediata no tablet.</small>
+              </span>
+              <input type="checkbox" checked={productForm.is_available} onChange={(event) => setProductForm((current) => current ? { ...current, is_available: event.target.checked } : current)} />
+            </label>
+            <label className="toggle-row toggle-row--compact">
+              <ShieldCheck size={20} />
+              <span>
+                <strong>Produto ativo</strong>
+                <small>Produtos inativos ficam fora da operacao.</small>
+              </span>
+              <input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm((current) => current ? { ...current, is_active: event.target.checked } : current)} />
+            </label>
+            <div className="admin-form__actions">
+              <button className="secondary-button" type="button" onClick={() => setProductForm(null)}>Cancelar</button>
+              <button className="primary-button" type="submit" disabled={isSaving}>
+                <Save size={18} />
+                {isSaving ? 'Salvando...' : 'Salvar produto'}
+              </button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
+    </section>
+  )
+}
+
+export function LegacyAdminProductsPage() {
   usePageTitle('Produtos')
   const { data, error, isLoading, reload } = useApiQuery(() => apiGet<PaginatedResponse<ApiProduct>>('/admin/products'), [])
   const products = data?.data ?? []
@@ -271,8 +911,7 @@ export function AdminUsersPage() {
     <AdminListPage
       title="Usuários internos"
       eyebrow="Permissões"
-      description="Contas operacionais para administração, caixa e cozinha."
-      action="Novo usuário"
+      description="Contas operacionais para administração, caixa e cozinha. O backend atual expõe apenas listagem de usuários."
       icon={UserRoundPlus}
       isLoading={isLoading}
       error={error}
@@ -409,11 +1048,17 @@ function settingsFormKey(settings: ApiRestaurantSettings) {
 
 export function AdminReportsPage() {
   usePageTitle('Relatórios')
-  const daily = useApiQuery(() => apiGet<{ net_total: number; payments_count: number }>('/admin/reports/daily-sales'), [])
+  const daily = useApiQuery(() => apiGet<{ net_total: number; payments_count: number; amount_paid_total?: number; change_total?: number }>('/admin/reports/daily-sales'), [])
   const products = useApiQuery(() => apiGet<Array<{ product_name: string; quantity_sold: string; total_sold: string }>>('/admin/reports/products-ranking'), [])
   const tables = useApiQuery(() => apiGet<Array<{ table?: ApiRestaurantTable; sessions_count: number; total_consumed: string }>>('/admin/reports/tables-usage'), [])
   const isLoading = daily.isLoading || products.isLoading || tables.isLoading
   const error = daily.error ?? products.error ?? tables.error
+  const reportRows = [
+    ['Vendas do dia', formatCurrency(daily.data?.net_total ?? 0), `${daily.data?.payments_count ?? 0} pagamentos`],
+    ['Valor recebido', formatCurrency(daily.data?.amount_paid_total ?? daily.data?.net_total ?? 0), `${formatCurrency(daily.data?.change_total ?? 0)} em troco`],
+    ['Produto mais vendido', products.data?.[0]?.product_name ?? 'Sem vendas', `${products.data?.[0]?.quantity_sold ?? 0} unidades`],
+    ['Mesa mais usada', tables.data?.[0]?.table?.name ?? 'Sem sessões', `${tables.data?.[0]?.sessions_count ?? 0} sessões`],
+  ]
 
   return (
     <AdminListPage
@@ -421,15 +1066,12 @@ export function AdminReportsPage() {
       eyebrow="Indicadores"
       description="Resumo financeiro e operacional para conferência rápida."
       action="Exportar"
-      icon={FileBarChart}
+      icon={Download}
+      onAction={() => exportCsv('kipedido-relatorios.csv', ['Indicador', 'Valor', 'Observação'], reportRows)}
       isLoading={isLoading}
       error={error}
       emptyTitle="Nenhum dado de relatório encontrado."
-      rows={[
-        ['Vendas do dia', formatCurrency(daily.data?.net_total ?? 0), `${daily.data?.payments_count ?? 0} pagamentos`],
-        ['Produto mais vendido', products.data?.[0]?.product_name ?? 'Sem vendas', `${products.data?.[0]?.quantity_sold ?? 0} unidades`],
-        ['Mesa mais usada', tables.data?.[0]?.table?.name ?? 'Sem sessões', `${tables.data?.[0]?.sessions_count ?? 0} sessões`],
-      ]}
+      rows={reportRows}
       columns={['Indicador', 'Valor', 'Observação']}
     />
   )
@@ -438,24 +1080,50 @@ export function AdminReportsPage() {
 export function AdminLogsPage() {
   usePageTitle('Logs')
   const { data, error, isLoading } = useApiQuery(() => apiGet<PaginatedResponse<ApiActionLog>>('/admin/logs'), [])
+  const [search, setSearch] = useState('')
+  const logs = (data?.data ?? []).filter((log) => matchesSearch([
+    log.action,
+    log.description,
+    formatDateTime(log.created_at),
+  ], search))
 
   return (
-    <AdminListPage
-      title="Logs de ações"
-      eyebrow="Auditoria"
-      description="Registro dos principais eventos operacionais do sistema."
-      action="Filtrar"
-      icon={ShieldCheck}
-      isLoading={isLoading}
-      error={error}
-      emptyTitle="Nenhum log registrado."
-      rows={(data?.data ?? []).map((log) => [
-        log.action,
-        log.description,
-        formatDateTime(log.created_at),
-      ])}
-      columns={['Ação', 'Evento', 'Horário']}
-    />
+    <section className="page-stack admin-page">
+      <PageHeader
+        eyebrow="Auditoria"
+        title="Logs de ações"
+        description="Registro dos principais eventos operacionais do sistema."
+      />
+
+      <section className="panel">
+        <div className="toolbar">
+          <label className="search-box">
+            <Search size={18} />
+            <input placeholder="Filtrar logs" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+        </div>
+
+        {isLoading ? <StateMessage title="Carregando logs de ações..." tone="loading" /> : null}
+        {error ? <ApiStateMessage error={error} /> : null}
+        {!isLoading && !error && logs.length === 0 ? <StateMessage title="Nenhum log encontrado." /> : null}
+        {!isLoading && !error && logs.length > 0 ? (
+          <div className="data-table data-table--three">
+            <div className="data-table__head">
+              <span>Ação</span>
+              <span>Evento</span>
+              <span>Horário</span>
+            </div>
+            {logs.map((log) => (
+              <div className="data-table__row" key={log.id}>
+                <strong data-label="Ação">{log.action}</strong>
+                <span data-label="Evento">{log.description}</span>
+                <span data-label="Horário">{formatDateTime(log.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    </section>
   )
 }
 
@@ -496,18 +1164,26 @@ function TableRows({ tables }: { tables: ApiRestaurantTable[] }) {
   )
 }
 
-function TableDataTable({ tables }: { tables: ApiRestaurantTable[] }) {
+type TableDataTableProps = {
+  tables: ApiRestaurantTable[]
+  onEdit: (table: ApiRestaurantTable) => void
+  onDelete: (table: ApiRestaurantTable) => void
+  onRegenerateToken: (table: ApiRestaurantTable) => void
+}
+
+function TableDataTable({ tables, onEdit, onDelete, onRegenerateToken }: TableDataTableProps) {
   if (tables.length === 0) {
     return <StateMessage title="Nenhuma mesa cadastrada." />
   }
 
   return (
-    <div className="data-table">
+    <div className="data-table data-table--with-actions data-table--table-actions">
       <div className="data-table__head">
         <span>Mesa</span>
         <span>Status</span>
         <span>Consumo</span>
         <span>Token</span>
+        <span>Ações</span>
       </div>
       {tables.map((table) => (
         <div className="data-table__row" key={table.id}>
@@ -515,17 +1191,87 @@ function TableDataTable({ tables }: { tables: ApiRestaurantTable[] }) {
           <span data-label="Status"><StatusBadge label={tableStatusLabel[table.status]} tone={tableStatusTone[table.status]} /></span>
           <span data-label="Consumo">{formatCurrency(table.active_session?.total_amount)}</span>
           <code data-label="Token">{table.token}</code>
+          <RowActions
+            onEdit={() => onEdit(table)}
+            onDelete={() => onDelete(table)}
+            extraActions={(
+              <button className="icon-button" type="button" title="Regenerar token" onClick={() => onRegenerateToken(table)}>
+                <KeyRound size={17} />
+              </button>
+            )}
+          />
         </div>
       ))}
     </div>
   )
 }
 
+type RowActionsProps = {
+  onEdit: () => void
+  onDelete: () => void
+  extraActions?: ReactNode
+}
+
+function RowActions({ onEdit, onDelete, extraActions }: RowActionsProps) {
+  return (
+    <div className="row-actions" data-label="Ações">
+      {extraActions}
+      <button className="icon-button" type="button" title="Editar" onClick={onEdit}>
+        <Pencil size={17} />
+      </button>
+      <button className="icon-button icon-button--danger" type="button" title="Inativar" onClick={onDelete}>
+        <Trash2 size={17} />
+      </button>
+    </div>
+  )
+}
+
+function AdminModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  return (
+    <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+      <div className="admin-modal__backdrop" onClick={onClose} />
+      <section className="admin-modal__panel">
+        <header className="admin-modal__header">
+          <h2 id="admin-modal-title">{title}</h2>
+          <button className="icon-button" type="button" title="Fechar" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+        {children}
+      </section>
+    </div>
+  )
+}
+
+function matchesSearch(values: Array<string | number | null | undefined>, search: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+
+  if (!normalizedSearch) return true
+
+  return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedSearch))
+}
+
+function exportCsv(fileName: string, headers: string[], rows: string[][]) {
+  const escapeValue = (value: string) => `"${value.replaceAll('"', '""')}"`
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeValue).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 type AdminListPageProps = {
   title: string
   eyebrow: string
   description: string
-  action: string
+  action?: string
+  onAction?: () => void
   rows: string[][]
   columns?: [string, string, string]
   isLoading: boolean
@@ -534,19 +1280,19 @@ type AdminListPageProps = {
   icon?: typeof Plus
 }
 
-function AdminListPage({ title, eyebrow, description, action, rows, columns = ['Nome', 'Detalhe', 'Status'], isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
+function AdminListPage({ title, eyebrow, description, action, onAction, rows, columns = ['Nome', 'Detalhe', 'Status'], isLoading, error, emptyTitle, icon: Icon = Plus }: AdminListPageProps) {
   return (
     <section className="page-stack admin-page">
       <PageHeader
         eyebrow={eyebrow}
         title={title}
         description={description}
-        actions={(
-          <button className="primary-button" type="button">
+        actions={action ? (
+          <button className="primary-button" type="button" onClick={onAction}>
             <Icon size={18} />
             {action}
           </button>
-        )}
+        ) : undefined}
       />
 
       <section className="panel">
