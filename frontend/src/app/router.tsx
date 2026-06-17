@@ -16,6 +16,7 @@ import {
   TabletBillPage,
   TabletCartPage,
   TabletHomePage,
+  TabletLinkPage,
   TabletMenuPage,
   TabletOrdersPage,
 } from '../modules/tablet/TabletPages'
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'logs', element: <AdminLogsPage /> },
     ],
+  },
+  {
+    path: '/tablet',
+    element: <TabletLinkPage />,
   },
   {
     path: '/tablet/:token',

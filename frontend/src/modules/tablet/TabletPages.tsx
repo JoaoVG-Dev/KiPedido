@@ -14,8 +14,8 @@ import {
   Utensils,
   WalletCards,
 } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { MoneyValue } from '../../components/shared/MoneyValue'
 import { ApiStateMessage, StateMessage } from '../../components/shared/StateMessage'
 import { CategoryChips } from '../../components/tablet/CategoryChips'
@@ -135,6 +135,64 @@ function useTabletToken() {
 
 function itemLabel(count: number) {
   return count === 1 ? '1 item' : `${count} itens`
+}
+
+export function TabletLinkPage() {
+  usePageTitle('Vincular mesa')
+  const navigate = useNavigate()
+  const [token, setToken] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedToken = token.trim()
+
+    if (!normalizedToken) {
+      setError('Informe o token da mesa ou leia o QR code.')
+      return
+    }
+
+    navigate(`/tablet/${encodeURIComponent(normalizedToken)}`)
+  }
+
+  return (
+    <main className="tablet-link-page">
+      <section className="tablet-link-panel">
+        <div className="brand brand--tablet">
+          <span className="brand__mark">K</span>
+          <div>
+            <strong>KiPedido</strong>
+            <small>Vínculo da mesa</small>
+          </div>
+        </div>
+
+        <div className="tablet-link-panel__copy">
+          <span className="eyebrow">Tablet da mesa</span>
+          <h1>Abra a mesa pelo QR code</h1>
+          <p>Use o QR code impresso da mesa ou informe o token entregue pela equipe para carregar o cardápio correto.</p>
+        </div>
+
+        <form className="tablet-link-form" onSubmit={submit}>
+          <label>
+            Token da mesa
+            <input value={token} onChange={(event) => setToken(event.target.value)} placeholder="Ex: mesa-01" autoComplete="off" />
+          </label>
+          <button className="primary-button primary-button--wide" type="submit">
+            <ArrowRight size={20} />
+            Abrir mesa
+          </button>
+        </form>
+
+        {error ? <StateMessage title={error} tone="error" /> : null}
+
+        {import.meta.env.DEV ? (
+          <Link className="secondary-button primary-button--wide" to="/tablet/mesa-01-teste">
+            Abrir mesa de teste local
+          </Link>
+        ) : null}
+      </section>
+    </main>
+  )
 }
 
 function useCart(token: string) {

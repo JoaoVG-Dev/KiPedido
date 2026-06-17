@@ -1,9 +1,9 @@
 {
-  "id": "/",
+  "id": "/tablet",
   "name": "KiPedido",
   "short_name": "KiPedido",
   "description": "Operacao de pedidos, cozinha, caixa e administracao para restaurantes.",
-  "start_url": "/tablet/mesa-01-teste",
+  "start_url": "/tablet",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "browser"],

@@ -1492,6 +1492,60 @@ code {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.tablet-link-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(37, 99, 235, 0.08)),
+    linear-gradient(180deg, #fff7ed, #fbfaf7);
+}
+
+.tablet-link-panel {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 22px;
+  border: 1px solid rgba(234, 223, 209, 0.86);
+  border-radius: 8px;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 243, 0.94)),
+    var(--surface);
+  box-shadow: var(--shadow-elevated);
+}
+
+.tablet-link-panel__copy {
+  display: grid;
+  gap: 8px;
+}
+
+.tablet-link-panel__copy h1 {
+  font-size: 30px;
+}
+
+.tablet-link-form {
+  display: grid;
+  gap: 13px;
+}
+
+.tablet-link-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 880;
+}
+
+.tablet-link-form input {
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+
 .tablet-shell {
   display: grid;
   min-height: 100vh;

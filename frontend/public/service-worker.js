@@ -1,6 +1,8 @@
-const CACHE_NAME = 'kipedido-shell-v1';
+const CACHE_NAME = 'kipedido-shell-v2';
+const APP_SHELL_URL = '/tablet';
 const CORE_ASSETS = [
   '/',
+  APP_SHELL_URL,
   '/manifest.webmanifest',
   '/favicon.svg',
   '/pwa-icon.svg',
@@ -36,10 +38,10 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/', copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put(APP_SHELL_URL, copy));
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html')),
+        .catch(() => caches.match(APP_SHELL_URL) || caches.match('/') || caches.match('/index.html')),
     );
     return;
   }
