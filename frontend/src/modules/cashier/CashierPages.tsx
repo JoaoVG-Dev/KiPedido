@@ -195,18 +195,28 @@ export function CashierTableDetailPage() {
   );
   const table = tableQuery.data?.find((item) => String(item.id) === id);
   const orders = billQuery.data?.session.orders ?? [];
+  const registeredPayments = billQuery.data?.session.payments ?? [];
   const printId = `cashier-table-${id}`;
+
   const [success, setSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [amountPaid, setAmountPaid] = useState<string | null>(null);
 
   const totalAmount = Number(billQuery.data?.total_amount ?? 0);
-  const amountPaidValue = amountPaid ?? String(totalAmount);
+  const paidAmount = Number(billQuery.data?.paid_amount ?? 0);
+  const remainingAmount = Number(
+    billQuery.data?.remaining_amount ?? totalAmount,
+  );
+  const amountPaidValue = amountPaid ?? String(remainingAmount || totalAmount);
   const parsedAmountPaid = Number(amountPaidValue || 0);
-  const changeAmount = Math.max(parsedAmountPaid - totalAmount, 0);
-  const isAmountInsufficient =
-    Boolean(amountPaidValue) && parsedAmountPaid < totalAmount;
+  const projectedPaidAmount = paidAmount + parsedAmountPaid;
+  const projectedRemainingAmount = Math.max(
+    totalAmount - projectedPaidAmount,
+    0,
+  );
+  const projectedChangeAmount = Math.max(projectedPaidAmount - totalAmount, 0);
+  const isAmountInvalid = Boolean(amountPaidValue) && parsedAmountPaid <= 0;
 
   const selectedPaymentLabel = useMemo(() => {
     return (
@@ -220,26 +230,38 @@ export function CashierTableDetailPage() {
     setActionError(null);
 
     if (!billQuery.data) {
-      setActionError("Carregue a conta antes de finalizar o pagamento.");
+      setActionError("Carregue a conta antes de registrar o pagamento.");
       return;
     }
 
-    if (parsedAmountPaid < totalAmount) {
-      setActionError("O valor pago não pode ser menor que o total da conta.");
+    if (parsedAmountPaid <= 0) {
+      setActionError("Informe um valor recebido maior que zero.");
       return;
     }
 
     try {
+      const closesBill = paidAmount + parsedAmountPaid >= totalAmount;
+
       await apiPost<ApiPayment>(`/cashier/tables/${id}/close`, {
         payment_method: paymentMethod,
         amount_paid: parsedAmountPaid,
       });
-      setSuccess(`Conta fechada com sucesso via ${selectedPaymentLabel}.`);
+
+      setSuccess(
+        closesBill
+          ? `Pagamento registrado via ${selectedPaymentLabel} e conta finalizada.`
+          : `Pagamento registrado via ${selectedPaymentLabel}. Ainda faltam ${formatCurrency(
+              Math.max(totalAmount - (paidAmount + parsedAmountPaid), 0),
+            )}.`,
+      );
+      setAmountPaid(null);
       await tableQuery.reload();
       await billQuery.reload().catch(() => undefined);
     } catch (caught) {
       setActionError(
-        caught instanceof Error ? caught.message : "Erro ao fechar conta.",
+        caught instanceof Error
+          ? caught.message
+          : "Erro ao registrar pagamento.",
       );
     }
   }
@@ -267,7 +289,7 @@ export function CashierTableDetailPage() {
       <PageHeader
         eyebrow="Fechamento"
         title={table?.name ?? `Mesa ${id}`}
-        description="Confira o recibo, os pedidos da sessão e finalize o pagamento."
+        description="Confira o recibo, registre pagamentos parciais e finalize a conta."
         actions={
           table ? (
             <StatusBadge
@@ -294,7 +316,7 @@ export function CashierTableDetailPage() {
 
         <section className="panel cashier-actions no-print">
           <span className="eyebrow">Ações do caixa</span>
-          <h2>Finalizar atendimento</h2>
+          <h2>Registrar pagamento</h2>
 
           <div className="cashier-payment-form">
             <div className="cashier-payment-header">
@@ -331,7 +353,7 @@ export function CashierTableDetailPage() {
               <span>Valor recebido</span>
               <div
                 className={
-                  isAmountInsufficient
+                  isAmountInvalid
                     ? "cashier-amount-input has-error"
                     : "cashier-amount-input"
                 }
@@ -351,27 +373,31 @@ export function CashierTableDetailPage() {
             <div className="cashier-quick-amounts">
               <button
                 type="button"
-                onClick={() => setAmountPaid(String(totalAmount))}
+                onClick={() => setAmountPaid(String(remainingAmount))}
               >
-                Valor exato
+                Valor restante
               </button>
               <button
                 type="button"
-                onClick={() => setAmountPaid(String(totalAmount + 10))}
+                onClick={() =>
+                  setAmountPaid(String(Math.max(remainingAmount / 2, 0)))
+                }
+              >
+                Dividir por 2
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setAmountPaid(String(Math.max(remainingAmount / 3, 0)))
+                }
+              >
+                Dividir por 3
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmountPaid(String(remainingAmount + 10))}
               >
                 + R$ 10
-              </button>
-              <button
-                type="button"
-                onClick={() => setAmountPaid(String(totalAmount + 20))}
-              >
-                + R$ 20
-              </button>
-              <button
-                type="button"
-                onClick={() => setAmountPaid(String(totalAmount + 50))}
-              >
-                + R$ 50
               </button>
             </div>
 
@@ -382,28 +408,53 @@ export function CashierTableDetailPage() {
               </div>
 
               <div>
-                <span>Valor recebido</span>
+                <span>Já pago</span>
+                <strong>{formatCurrency(paidAmount)}</strong>
+              </div>
+
+              <div>
+                <span>Recebendo agora</span>
                 <strong>{formatCurrency(parsedAmountPaid)}</strong>
               </div>
 
               <div className="cashier-payment-summary__total">
-                <span>{isAmountInsufficient ? "Falta receber" : "Troco"}</span>
+                <span>
+                  {projectedRemainingAmount > 0
+                    ? "Restante após pagamento"
+                    : "Troco"}
+                </span>
                 <strong>
                   {formatCurrency(
-                    isAmountInsufficient
-                      ? totalAmount - parsedAmountPaid
-                      : changeAmount,
+                    projectedRemainingAmount > 0
+                      ? projectedRemainingAmount
+                      : projectedChangeAmount,
                   )}
                 </strong>
               </div>
             </div>
 
-            {isAmountInsufficient ? (
+            {isAmountInvalid ? (
               <small className="cashier-payment-error">
-                O valor recebido está menor que o total da conta.
+                Informe um valor recebido maior que zero.
               </small>
             ) : null}
           </div>
+
+          {registeredPayments.length > 0 ? (
+            <div className="cashier-payment-history">
+              <div className="cashier-payment-history__header">
+                <span>Pagamentos registrados</span>
+                <strong>{formatCurrency(paidAmount)}</strong>
+              </div>
+
+              {registeredPayments.map((payment) => (
+                <div className="cashier-payment-history__item" key={payment.id}>
+                  <span>{paymentMethodLabel(payment.payment_method)}</span>
+                  <strong>{formatCurrency(payment.amount_paid)}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           <button className="secondary-button" type="button" disabled>
             <Percent size={18} />
@@ -423,11 +474,11 @@ export function CashierTableDetailPage() {
           <button
             className="primary-button"
             type="button"
-            disabled={!billQuery.data || isAmountInsufficient}
+            disabled={!billQuery.data || isAmountInvalid}
             onClick={() => void closeTable()}
           >
             <ReceiptText size={18} />
-            Fechar conta via {selectedPaymentLabel}
+            Registrar pagamento via {selectedPaymentLabel}
           </button>
 
           <button
@@ -509,6 +560,16 @@ function OrderList({ orders }: { orders: ApiOrder[] }) {
       ))}
     </div>
   );
+}
+
+function paymentMethodLabel(method: ApiPayment["payment_method"]) {
+  return {
+    cash: "Dinheiro",
+    credit_card: "Cartão de crédito",
+    debit_card: "Cartão de débito",
+    pix: "PIX",
+    mixed: "Misto",
+  }[method];
 }
 
 function orderStatusLabel(status: ApiOrder["status"]) {
