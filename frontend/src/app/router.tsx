@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { TabletShell } from '../components/layout/TabletShell'
 import { LoginPage } from '../modules/auth/LoginPage'
@@ -22,11 +22,12 @@ import {
 } from '../modules/tablet/TabletPages'
 import { KitchenDashboard, KitchenOrdersPage } from '../modules/kitchen/KitchenPages'
 import { CashierDashboard, CashierTableDetailPage, CashierTablesPage } from '../modules/cashier/CashierPages'
+import { SalesPage } from '../modules/marketing/SalesPage'
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <Navigate to="/admin" replace />,
+    element: <SalesPage />,
   },
   {
     path: '/admin/login',
