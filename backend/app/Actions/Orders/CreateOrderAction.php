@@ -25,6 +25,18 @@ class CreateOrderAction
             ]);
         }
 
+        if ($table->status === 'closed') {
+            throw ValidationException::withMessages([
+                'table' => 'Esta mesa está fechada aguardando liberação pelo caixa. Não é possível enviar novos pedidos.',
+            ]);
+        }
+
+        if ($table->status === 'waiting_payment') {
+            throw ValidationException::withMessages([
+                'table_session' => 'A conta desta mesa já foi solicitada. Não é possível enviar novos pedidos até o caixa finalizar ou reabrir a mesa.',
+            ]);
+        }
+
         return DB::transaction(function () use ($table, $data): Order {
             $blockedSession = TableSession::query()
                 ->where('table_id', $table->id)
