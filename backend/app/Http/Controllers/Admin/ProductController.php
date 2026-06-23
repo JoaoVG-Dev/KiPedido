@@ -74,7 +74,10 @@ class ProductController extends Controller
             'image' => ['required', 'image', 'max:4096'],
         ]);
 
-        $path = $request->file('image')->store('products', 'public');
+        $path = $request->file('image')->store(
+            'products',
+            config('filesystems.product_images_disk'),
+        );
         $product->update(['image_path' => $path]);
 
         return response()->json($product->refresh());

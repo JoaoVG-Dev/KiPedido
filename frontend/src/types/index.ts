@@ -101,6 +101,7 @@ export type ApiProduct = {
   description?: string | null
   price: string | number
   image_path?: string | null
+  image_url?: string | null
   is_available: boolean
   is_active: boolean
   sort_order: number

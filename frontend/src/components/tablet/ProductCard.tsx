@@ -15,7 +15,10 @@ export function ProductCard({ category, product, onAdd, disabledReason }: Produc
   const isAvailable = product.is_available !== false
   const canAdd = isAvailable && !disabledReason
   const initials = category.name.slice(0, 2).toUpperCase()
-  const imageUrl = product.image_path ? `${publicAssetUrl}/storage/${product.image_path}` : null
+  const imageUrl = product.image_url
+    ?? (product.image_path
+      ? product.image_path.startsWith('http') ? product.image_path : `${publicAssetUrl}/storage/${product.image_path}`
+      : null)
 
   return (
     <article className={canAdd ? 'menu-item' : 'menu-item menu-item--disabled'}>

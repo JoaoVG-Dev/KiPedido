@@ -7,10 +7,15 @@ use App\Http\Controllers\Tablet\SessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('tablet/{token}')->group(function () {
-    Route::get('menu', [MenuController::class, 'index']);
-    Route::get('session', [SessionController::class, 'show']);
-    Route::post('orders', [OrderController::class, 'store']);
-    Route::get('orders', [OrderController::class, 'index']);
-    Route::post('call-waiter', [ServiceCallController::class, 'callWaiter']);
-    Route::post('request-bill', [ServiceCallController::class, 'requestBill']);
+    Route::middleware('throttle:tablet-read')->group(function () {
+        Route::get('menu', [MenuController::class, 'index']);
+        Route::get('session', [SessionController::class, 'show']);
+        Route::get('orders', [OrderController::class, 'index']);
+    });
+
+    Route::middleware('throttle:tablet-write')->group(function () {
+        Route::post('orders', [OrderController::class, 'store']);
+        Route::post('call-waiter', [ServiceCallController::class, 'callWaiter']);
+        Route::post('request-bill', [ServiceCallController::class, 'requestBill']);
+    });
 });
