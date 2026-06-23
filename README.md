@@ -8,6 +8,9 @@ KiPedido e um software operacional para restaurantes que usam tablets nas mesas 
 Frontend:
 http://127.0.0.1:5173
 
+Pagina comercial:
+http://127.0.0.1:5173/
+
 Backend:
 http://127.0.0.1:8000
 
@@ -20,6 +23,7 @@ http://127.0.0.1:8000/api/health
 - Backend: Laravel API + Sanctum
 - Frontend: React + TypeScript + Vite
 - Banco: MySQL ou PostgreSQL em ambiente real; SQLite pode ser usado para desenvolvimento local rapido
+- Producao recomendada: Neon Postgres com conexao pooled e SSL
 - Arquitetura: frontend e backend separados em `backend/` e `frontend/`
 
 ## Estrutura
@@ -113,6 +117,7 @@ API menu: http://127.0.0.1:8000/api/tablet/mesa-01-teste/menu
 
 ## Modulos
 
+- Comercial: landing page publica com visao do produto, beneficios, recursos e CTA configuravel.
 - Admin: login, dashboard, mesas, categorias, produtos, usuarios, configuracoes, relatorios e logs.
 - Tablet/Mesa: menu por token, carrinho local, envio real de pedido, pedidos da sessao, chamar garcom e pedir conta.
 - Cozinha: pedidos reais, itens, observacoes e alteracao de status.
@@ -147,6 +152,12 @@ A fase premium atual consolidou o Tablet como experiencia principal e alinhou Co
 - Sistema visual: tokens, cards, botoes, badges, inputs, tabelas e estados centralizados principalmente em `frontend/src/index.css`.
 
 Antes de publicar uma nova etapa visual, valide backend, lint, typecheck, build e uma passada responsiva nos principais tamanhos de uso.
+
+## Deploy
+
+O frontend esta preparado para a Vercel pelo `vercel.json` da raiz. A API Laravel esta preparada para Neon Postgres e deve ser publicada em um host com runtime PHP 8.3+ oficial. Consulte [`DEPLOY.md`](DEPLOY.md) para variaveis, dominios, storage e migracoes.
+
+A revisao tecnica completa e as prioridades restantes estao em [`PROJECT_REVIEW.md`](PROJECT_REVIEW.md).
 
 ## Nota Da Fase Produto/PWA
 
